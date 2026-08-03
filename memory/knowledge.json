@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": 1779228354931,
+    "type": "auto",
+    "value": "O projeto guarda transformações contínuas.",
+    "raw": "Boa noite",
+    "created_at": "2026-05-19T22:05:54.931Z"
+  },
+  {
+    "id": 1779328870376,
+    "type": "auto",
+    "value": "Inquiry about the probability of Flamengo winning the Libertadores tournament.",
+    "raw": "Qual a probabilidade de o Flamengo ganhar a libertadores?",
+    "created_at": "2026-05-21T02:01:10.355Z"
+  },
+  {
+    "id": 1779329078009,
+    "type": "auto",
+    "value": "O usuário questiona uma afirmação falsa de que Eduardo Camavinga é técnico do Flamengo.",
+    "raw": "E que diacho cê falou que o Eduardo Camavinga é técnico do Flamengo?",
+    "created_at": "2026-05-21T02:04:38.008Z"
+  }
+]
