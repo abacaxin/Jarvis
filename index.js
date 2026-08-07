@@ -1,20 +1,42 @@
 require('dotenv').config();
 
 const TelegramBot = require('node-telegram-bot-api');
+const logger = require('./services/logger');
 
 const { processMessage, detectMode } =
 require('./core/assistantBrain');
 
 const token = process.env.TOKEN;
 
+if (!token) {
+
+  logger.error('TOKEN nao configurado no .env, encerrando.');
+
+  process.exit(1);
+}
+
+process.on('uncaughtException', (erro) => {
+
+  logger.error('Uncaught exception', erro);
+
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (erro) => {
+
+  logger.error('Unhandled rejection', erro);
+
+  process.exit(1);
+});
+
 const bot = new TelegramBot(token, {
   polling: true
 });
 
-console.log("Kevin online.");
+logger.info('Kevin online.');
 
 bot.on('polling_error', (erro) => {
-  console.log('Erro de polling:', erro);
+  logger.error('Erro de polling', erro);
 });
 
 // chatId -> [{role, content}], ultimas 10 trocas (20 mensagens)
@@ -101,7 +123,7 @@ bot.on('message', async (msg) => {
 
   } catch (erro) {
 
-    console.log(erro);
+    logger.error(`Erro processando mensagem de ${chatId}`, erro);
 
     bot.sendMessage(
       chatId,

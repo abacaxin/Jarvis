@@ -1,4 +1,8 @@
 const fs = require('fs-extra');
+const logger = require('./logger');
+
+const MAX_KNOWLEDGE = 300;
+const MAX_CONVERSATIONS = 500;
 
 // ----------------------
 // LOAD
@@ -11,9 +15,27 @@ function load(path) {
     fs.writeJsonSync(path, [], {
       spaces: 2
     });
+
+    return [];
   }
 
-  return fs.readJsonSync(path);
+  try {
+
+    return fs.readJsonSync(path);
+
+  } catch (erro) {
+
+    logger.warn(
+      `Arquivo de memoria corrompido, resetando: ${path}`,
+      erro.message
+    );
+
+    fs.writeJsonSync(path, [], {
+      spaces: 2
+    });
+
+    return [];
+  }
 }
 
 // ----------------------
@@ -22,9 +44,19 @@ function load(path) {
 
 function save(path, data) {
 
-  fs.writeJsonSync(path, data, {
-    spaces: 2
-  });
+  try {
+
+    fs.writeJsonSync(path, data, {
+      spaces: 2
+    });
+
+  } catch (erro) {
+
+    logger.error(
+      `Falha ao salvar memoria: ${path}`,
+      erro
+    );
+  }
 }
 
 // ----------------------
@@ -95,18 +127,48 @@ function saveProject(path, project) {
 // KNOWLEDGE
 // ----------------------
 
+function normalizeValue(value) {
+
+  return (value || '')
+  .trim()
+  .toLowerCase();
+}
+
 function saveKnowledge(path, item) {
 
   const knowledge = load(path);
+
+  const existing = knowledge.find(k =>
+    normalizeValue(k.value) === normalizeValue(item.value)
+  );
+
+  if (existing) {
+
+    existing.updated_at = new Date();
+    existing.hits = (existing.hits || 1) + 1;
+
+    save(path, knowledge);
+
+    return existing;
+  }
 
   knowledge.push({
 
     id: Date.now(),
 
-    ...item
+    ...item,
+
+    updated_at: new Date(),
+    hits: 1
   });
 
-  save(path, knowledge);
+  const trimmed = knowledge.length > MAX_KNOWLEDGE
+    ? knowledge.slice(knowledge.length - MAX_KNOWLEDGE)
+    : knowledge;
+
+  save(path, trimmed);
+
+  return trimmed[trimmed.length - 1];
 }
 
 // ----------------------
@@ -130,7 +192,11 @@ function saveConversation(
     assistant
   });
 
-  save(path, conversations);
+  const trimmed = conversations.length > MAX_CONVERSATIONS
+    ? conversations.slice(conversations.length - MAX_CONVERSATIONS)
+    : conversations;
+
+  save(path, trimmed);
 }
 
 module.exports = {

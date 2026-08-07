@@ -1,11 +1,20 @@
 const OpenAI = require('openai');
 const fs = require('fs-extra');
+const logger = require('../services/logger');
 
 const {
   saveProject,
   saveKnowledge,
   saveConversation
 } = require('../services/memoryRouter');
+
+const KNOWLEDGE_CATEGORIES = [
+  'tecnico',
+  'preferencia',
+  'pessoal',
+  'projeto',
+  'outro'
+];
 
 const openai = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -49,9 +58,23 @@ function loadJSON(path, fallback = []) {
     fs.writeJsonSync(path, fallback, {
       spaces: 2
     });
+
+    return fallback;
   }
 
-  return fs.readJsonSync(path);
+  try {
+
+    return fs.readJsonSync(path);
+
+  } catch (erro) {
+
+    logger.warn(
+      `Arquivo corrompido, usando fallback: ${path}`,
+      erro.message
+    );
+
+    return fallback;
+  }
 }
 
 // ----------------------
@@ -70,6 +93,10 @@ const RESPONSE_SCHEMA = {
         save_project: { type: 'boolean' },
         project_name: { type: ['string', 'null'] },
         save_knowledge: { type: 'boolean' },
+        knowledge_category: {
+          type: ['string', 'null'],
+          enum: [...KNOWLEDGE_CATEGORIES, null]
+        },
         summary: { type: 'string' }
       },
       required: [
@@ -77,6 +104,7 @@ const RESPONSE_SCHEMA = {
         'save_project',
         'project_name',
         'save_knowledge',
+        'knowledge_category',
         'summary'
       ],
       additionalProperties: false
@@ -123,6 +151,22 @@ async function processMessage({
     new Date(a.updated_at || a.created_at))
   .slice(0, 15);
 
+  const knowledgeByCategory = KNOWLEDGE_CATEGORIES
+  .map(cat => {
+
+    const items = knowledge
+    .filter(k => (k.category || 'outro') === cat)
+    .slice(-8);
+
+    if (!items.length) return null;
+
+    return `${cat.toUpperCase()}:\n${items
+    .map(k => `- ${k.value}`)
+    .join('\n')}`;
+  })
+  .filter(Boolean)
+  .join('\n\n');
+
   const memoryContext = `
 PROJETOS ATIVOS (use o nome EXATAMENTE como está aqui se a mensagem for sobre um deles — não crie um projeto novo com nome diferente para a mesma coisa):
 ${activeProjects
@@ -130,12 +174,8 @@ ${activeProjects
 `- ${p.name}: ${p.description}`)
 .join('\n') || '(nenhum)'}
 
-CONHECIMENTOS RECENTES:
-${knowledge
-.slice(-20)
-.map(k =>
-`- ${k.value}`)
-.join('\n') || '(nenhum)'}
+CONHECIMENTOS RECENTES (por categoria):
+${knowledgeByCategory || '(nenhum)'}
 `;
 
   // ----------------------
@@ -174,6 +214,7 @@ Responda em JSON com os campos:
 - save_project: true APENAS se a mensagem descreve ou avança um projeto/ideia/sistema contínuo real
 - project_name: nome do projeto (ou null se save_project for false). Se a mensagem for sobre um projeto que já está em PROJETOS ATIVOS, use o nome EXATAMENTE igual ao que já existe — isso atualiza o projeto em vez de criar um duplicado.
 - save_knowledge: true APENAS se a mensagem contém um fato técnico ou informação específica que vale lembrar depois
+- knowledge_category: quando save_knowledge for true, classifique em uma dessas categorias: ${KNOWLEDGE_CATEGORIES.join(', ')} (ou null se save_knowledge for false)
 - summary: resumo curto da mensagem (usado para salvar projeto/conhecimento), sempre em português
 
 Regras importantes para save_project e save_knowledge:
@@ -204,7 +245,7 @@ Regras para o campo resposta:
 
   } catch (erro) {
 
-    console.log('Erro na chamada LLM:', erro);
+    logger.error('Erro na chamada LLM', erro);
 
     return 'Deu ruim aqui do meu lado, tenta de novo.';
   }
@@ -242,6 +283,9 @@ Regras para o campo resposta:
     saveKnowledge(knowledgeFile, {
 
       type: 'auto',
+
+      category:
+      decision.knowledge_category || 'outro',
 
       value:
       decision.summary,

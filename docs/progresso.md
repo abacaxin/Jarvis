@@ -24,11 +24,13 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 
 **Sprint original 100% concluído** (blocos 1 a 5 do plano).
 
+- [x] **Refatorar `knowledge.json`**: schema ganhou `category` (`tecnico`, `preferencia`, `pessoal`, `projeto`, `outro`, classificado pelo próprio LLM na chamada única). `saveKnowledge` agora faz dedup por valor normalizado (repetir o mesmo fato só incrementa `hits`, não duplica) e o arquivo tem teto de 300 entradas (trim automático das mais antigas). O prompt mostra os conhecimentos agrupados por categoria, até 8 por categoria — teto fixo independente de quanto o arquivo cresça.
+- [x] **Error handling estruturado + logs reais**: `services/logger.js` (timestamp + nível) substitui `console.log` solto. `index.js` ganhou handlers de `uncaughtException`/`unhandledRejection` (loga e sai — PM2 reinicia limpo em vez de estado indefinido). `memoryRouter.js` e `assistantBrain.js` não crasham mais se um arquivo de memória estiver com JSON corrompido — logam warning e resetam pro fallback.
+- [x] `conversations.json` também ganhou teto (500 entradas).
+
 ## Pendente
 
-- [ ] Refatorar `knowledge.json` (categorias, controle de crescimento, dedup — mesmo problema que projects tinha)
-- [ ] Error handling estruturado + logs reais
-- [ ] Deploy 24/7 (Railway, conforme planejamento original)
+- [ ] Deploy 24/7 (Railway, conforme planejamento original) — ver [deploy.md](deploy.md)
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
 
 ## Bloqueado / precisa de ação externa
