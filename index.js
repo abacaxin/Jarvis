@@ -33,6 +33,8 @@ bot.on('message', async (msg) => {
 
   try {
 
+    bot.sendChatAction(chatId, 'typing');
+
     const resposta =
     await processMessage({
 

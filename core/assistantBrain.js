@@ -8,8 +8,8 @@ const {
 } = require('../services/memoryRouter');
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1'
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1'
 });
 
 // ----------------------
@@ -37,7 +37,7 @@ async function analyzeIntent(texto) {
   const response =
   await openai.chat.completions.create({
 
-    model: 'openrouter/free',
+    model: 'llama-3.1-8b-instant',
 
     messages: [
 
@@ -195,7 +195,7 @@ ${knowledge
   const response =
   await openai.chat.completions.create({
 
-    model: 'openrouter/free',
+    model: 'llama-3.3-70b-versatile',
 
     messages: [
 
