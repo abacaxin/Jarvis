@@ -12,7 +12,7 @@ const openai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-const FAST_MODEL = 'llama-3.3-70b-versatile';
+const FAST_MODEL = 'openai/gpt-oss-120b';
 
 // ----------------------
 // LOAD JSON

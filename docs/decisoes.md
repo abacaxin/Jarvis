@@ -9,9 +9,9 @@ Registro de decisões técnicas tomadas ao longo do projeto e o porquê. Objetiv
 **Por quê:** o modelo gratuito do OpenRouter é instável (fila imprevisível, sem garantia de qualidade/disponibilidade), problema já identificado no planejamento original. Groq tem SLA mais previsível e suporta Structured Outputs (JSON Schema estrito), o que resolve o segundo problema abaixo.
 
 **Modelos usados hoje:**
-- `llama-3.3-70b-versatile` — chamada única (resposta + decisão de memória)
+- `openai/gpt-oss-120b` — chamada única (resposta + decisão de memória)
 
-Trocar o modelo é uma linha em `FAST_MODEL` no topo de `core/assistantBrain.js`. Quando o Fast/Deep mode (bloco 4 do sprint) for implementado, provavelmente vira dois modelos diferentes ao invés de uma constante única.
+Trocar o modelo é uma linha em `FAST_MODEL` no topo de `core/assistantBrain.js`, **mas atenção**: `response_format: json_schema` com `strict: true` só é suportado por `openai/gpt-oss-20b` e `openai/gpt-oss-120b` na Groq (testado em produção — `llama-3.3-70b-versatile` retorna 400 nesse response_format). Qualquer outro modelo exige trocar pro modo `json_object` (sem garantia de schema) ou voltar a validar o JSON manualmente. Quando o Fast/Deep mode (bloco 4 do sprint) for implementado, provavelmente vira dois modelos diferentes ao invés de uma constante única — manter essa restrição em mente ao escolher o modelo do modo Fast.
 
 ## Uma chamada LLM em vez de duas
 
