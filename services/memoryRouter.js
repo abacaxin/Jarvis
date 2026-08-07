@@ -31,18 +31,64 @@ function save(path, data) {
 // PROJECTS
 // ----------------------
 
+function normalizeName(name) {
+
+  return (name || '')
+  .trim()
+  .toLowerCase();
+}
+
 function saveProject(path, project) {
 
   const projects = load(path);
 
-  projects.push({
+  const existing = projects.find(p =>
+    p.status !== 'done' &&
+    normalizeName(p.name) === normalizeName(project.name)
+  );
+
+  if (existing) {
+
+    existing.description =
+    project.description ||
+    existing.description;
+
+    existing.updated_at = new Date();
+
+    existing.history =
+    existing.history || [];
+
+    existing.history.push({
+      raw: project.raw,
+      summary: project.description,
+      at: new Date()
+    });
+
+    save(path, projects);
+
+    return existing;
+  }
+
+  const novo = {
 
     id: Date.now(),
 
-    ...project
-  });
+    ...project,
+
+    updated_at: new Date(),
+
+    history: [{
+      raw: project.raw,
+      summary: project.description,
+      at: new Date()
+    }]
+  };
+
+  projects.push(novo);
 
   save(path, projects);
+
+  return novo;
 }
 
 // ----------------------

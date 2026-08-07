@@ -70,7 +70,8 @@ async function processMessage({
   profileFile,
   projectsFile,
   knowledgeFile,
-  conversationsFile
+  conversationsFile,
+  history = []
 
 }) {
 
@@ -91,19 +92,26 @@ async function processMessage({
   // MEMORY CONTEXT
   // ----------------------
 
+  const activeProjects = projects
+  .filter(p => p.status !== 'done')
+  .sort((a, b) =>
+    new Date(b.updated_at || b.created_at) -
+    new Date(a.updated_at || a.created_at))
+  .slice(0, 15);
+
   const memoryContext = `
-PROJETOS:
-${projects
+PROJETOS ATIVOS (use o nome EXATAMENTE como está aqui se a mensagem for sobre um deles — não crie um projeto novo com nome diferente para a mesma coisa):
+${activeProjects
 .map(p =>
 `- ${p.name}: ${p.description}`)
-.join('\n')}
+.join('\n') || '(nenhum)'}
 
-CONHECIMENTOS:
+CONHECIMENTOS RECENTES:
 ${knowledge
 .slice(-20)
 .map(k =>
 `- ${k.value}`)
-.join('\n')}
+.join('\n') || '(nenhum)'}
 `;
 
   // ----------------------
@@ -129,24 +137,33 @@ ${knowledge
           content: `
 Você é ${profile.assistant_name || 'Kevin'}, um assistente pessoal contínuo.
 
+Você conversa com ${profile.user_name || 'o usuário'}. Trate-o pelo nome quando fizer sentido, sem forçar a cada mensagem.
+
 Você acompanha projetos, evolução e contexto do usuário.
 
 ${memoryContext}
 
 Responda em JSON com os campos:
 - resposta: sua resposta em texto natural para o usuário
-- save_project: true se a mensagem descreve um projeto/ideia/sistema contínuo novo
-- project_name: nome do projeto (ou null se save_project for false)
-- save_knowledge: true se a mensagem contém informação técnica ou relevante para lembrar
-- summary: resumo curto da mensagem (usado para salvar projeto/conhecimento)
+- save_project: true APENAS se a mensagem descreve ou avança um projeto/ideia/sistema contínuo real
+- project_name: nome do projeto (ou null se save_project for false). Se a mensagem for sobre um projeto que já está em PROJETOS ATIVOS, use o nome EXATAMENTE igual ao que já existe — isso atualiza o projeto em vez de criar um duplicado.
+- save_knowledge: true APENAS se a mensagem contém um fato técnico ou informação específica que vale lembrar depois
+- summary: resumo curto da mensagem (usado para salvar projeto/conhecimento), sempre em português
+
+Regras importantes para save_project e save_knowledge:
+- Saudações, despedidas, small talk ("bom dia", "e aí", "tudo bem?", "boa noite") NUNCA contam como projeto ou conhecimento — nesses casos ambos ficam false
+- Perguntas sobre o que já existe na memória (ex: "quais projetos eu tenho?") NUNCA contam como novo projeto ou conhecimento
+- Na dúvida, prefira false — é melhor deixar de salvar algo relevante do que poluir a memória com lixo
 
 Regras para o campo resposta:
-- Fale naturalmente
+- Fale naturalmente, em português
 - Seja direto
 - Não pareça um chatbot genérico
-- Considere continuidade
+- Considere a continuidade da conversa (histórico abaixo, se houver)
 `
         },
+
+        ...history,
 
         {
           role: 'user',

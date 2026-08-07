@@ -1,2 +1,6 @@
 node_modules/
 .env
+
+memory/conversations.json
+memory/projects.json
+memory/knowledge.json
