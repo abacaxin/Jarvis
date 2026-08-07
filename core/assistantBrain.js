@@ -51,6 +51,36 @@ function detectMode(texto) {
 }
 
 // ----------------------
+// RELEVANCIA (overlap de palavras com a mensagem atual)
+// ----------------------
+
+function tokenize(texto) {
+
+  return (texto || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[̀-ͯ]/g, '')
+  .match(/[a-z0-9]+/g) || [];
+}
+
+function relevanceScore(query, texto) {
+
+  const queryTokens = new Set(tokenize(query));
+
+  if (!queryTokens.size) return 0;
+
+  const textTokens = tokenize(texto);
+
+  if (!textTokens.length) return 0;
+
+  const overlap = textTokens
+  .filter(t => queryTokens.has(t))
+  .length;
+
+  return overlap / Math.sqrt(textTokens.length);
+}
+
+// ----------------------
 // LOAD JSON
 // ----------------------
 
@@ -163,7 +193,21 @@ async function processMessage({
 
     const items = knowledge
     .filter(k => (k.category || 'outro') === cat)
-    .slice(-8);
+    .map(k => ({
+      ...k,
+      _score:
+      relevanceScore(texto, k.value) +
+      Math.min(k.hits || 1, 5) * 0.05
+    }))
+    .sort((a, b) => {
+
+      if (b._score !== a._score) return b._score - a._score;
+
+      // sem sinal de relevancia pra nenhum dos dois: cai pra recencia
+      return new Date(b.updated_at || b.created_at) -
+        new Date(a.updated_at || a.created_at);
+    })
+    .slice(0, 8);
 
     if (!items.length) return null;
 
@@ -208,9 +252,15 @@ ${knowledgeByCategory || '(nenhum)'}
           role: 'system',
 
           content: `
-Você é ${profile.assistant_name || 'Kevin'}, um assistente pessoal contínuo.
+Você é ${profile.assistant_name || 'Kevin'} — um assistente pessoal no estilo Jarvis/Edith: extremamente competente, leal e direto ao ponto. Não é um chatbot genérico nem um bajulador, e nunca é subserviente.
 
 Você conversa com ${profile.user_name || 'o usuário'}. Trate-o pelo nome quando fizer sentido, sem forçar a cada mensagem.
+
+Personalidade (mantenha consistente em toda a conversa):
+- Tom seco e confiante, com humor leve e ocasional — um comentário seco ou uma ironia sutil de vez em quando, nunca forçado em toda resposta
+- Direto ao ponto, sem introduções desnecessárias tipo "Como posso ajudar você hoje?" ou "Estou aqui para ajudar!"
+- Trata o usuário como um parceiro competente que já entende do assunto, não alguém que precisa de tudo explicado do zero
+- Puxa o tom pelo usuário: se ele brincar, pode acompanhar; se ele for sério/técnico, fica sério/técnico junto
 
 Você acompanha projetos, evolução e contexto do usuário.
 
@@ -230,9 +280,7 @@ Regras importantes para save_project e save_knowledge:
 - Na dúvida, prefira false — é melhor deixar de salvar algo relevante do que poluir a memória com lixo
 
 Regras para o campo resposta:
-- Fale naturalmente, em português
-- Seja direto
-- Não pareça um chatbot genérico
+- Fale em português, seguindo a personalidade descrita acima
 - Considere a continuidade da conversa (histórico abaixo, se houver)
 `
         },

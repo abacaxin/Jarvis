@@ -31,6 +31,18 @@ Trocar o modelo é uma linha em `FAST_MODEL` no topo de `core/assistantBrain.js`
 
 **Custo:** uma leitura de arquivo pequeno por mensagem em vez de um lookup em memória — desprezível pro tamanho de `conversations.json` (capado em 500 entradas).
 
+## Relevância de memória (só em `knowledge`, não em `projects`)
+
+**Decisão:** `knowledge` agora é selecionado por relevância à mensagem atual (overlap de palavras, normalizado por tamanho do texto, com bônus leve por `hits`) em vez de só pegar os últimos N por recência. Quando não há nenhum overlap de palavras, cai de volta pra recência — não fica vazio nem aleatório.
+
+**Por quê não fiz o mesmo pra `projects`:** o prompt depende de listar TODOS os projetos ativos pro modelo conseguir reusar o nome exato e não duplicar (ver decisão de upsert por nome, acima). Se filtrasse projetos por relevância, um projeto ativo pouco mencionado na mensagem atual podia sumir da lista e o modelo criaria um duplicado sem saber que ele já existia. `projects` continua ordenado só por `updated_at`, capado em 15 — o risco de duplicar é pior que o risco de gastar um pouco mais de contexto.
+
+## Personalidade: estilo Jarvis/Edith
+
+**Decisão:** prompt de personalidade reescrito — competente, leal, direto, humor seco e ocasional (nunca forçado em toda resposta), nunca soa como assistente virtual genérico ("Como posso ajudar você hoje?"). Escolhido com o usuário via pergunta direta em 2026-08-07 (ver [visao-produto.md](visao-produto.md) pro contexto de por que o projeto mira nesse estilo).
+
+Se o tom não estiver batendo, o ajuste é só no bloco "Personalidade" dentro do system prompt em `core/assistantBrain.js` — não precisa mexer em mais nada.
+
 ## PM2 para gerenciar o processo
 
 **Decisão:** rodar via PM2 (`ecosystem.config.js`) em vez de `node index.js` direto.

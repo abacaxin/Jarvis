@@ -31,6 +31,9 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Deploy 24/7 (Railway)**: feito, repo em [github.com/abacaxin/Jarvis](https://github.com/abacaxin/Jarvis) conectado, push na `main` faz redeploy automático.
 - [x] **Bug pós-deploy: sessão perdia contexto entre mensagens no Railway** — `sessionHistory` (Map em RAM) zerava a cada restart do processo. Trocado por `loadHistory()`, que lê `conversations.json` do disco (ver [decisoes.md](decisoes.md)). `index.js` não mantém mais estado de sessão em memória.
 
+- [x] **Personalidade estilo Jarvis/Edith**: prompt reescrito com o tom escolhido pelo usuário (competente, direto, humor seco e ocasional). Ver [decisoes.md](decisoes.md).
+- [x] **Relevância de memória**: `knowledge` agora é selecionado por overlap de palavras com a mensagem atual + leve peso por `hits`, com fallback pra recência quando não há overlap. `projects` continua só por recência de propósito (ver decisoes.md — risco de duplicar é pior que gastar contexto extra).
+
 ## Pendente
 
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
