@@ -30,7 +30,7 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 
 ## Pendente
 
-- [ ] Deploy 24/7 (Railway, conforme planejamento original) — ver [deploy.md](deploy.md)
+- [ ] Deploy 24/7 (Railway, conforme planejamento original) — passo a passo pronto em [deploy.md](deploy.md), falta você criar o repo no GitHub (ou passar a URL de um existente) e a conta/projeto no Railway pra eu continuar
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
 
 ## Bloqueado / precisa de ação externa
