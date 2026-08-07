@@ -39,9 +39,6 @@ bot.on('polling_error', (erro) => {
   logger.error('Erro de polling', erro);
 });
 
-// chatId -> [{role, content}], ultimas 10 trocas (20 mensagens)
-const sessionHistory = new Map();
-const MAX_HISTORY_MESSAGES = 20;
 const TELEGRAM_MAX_LENGTH = 4000;
 
 function sendLong(chatId, texto) {
@@ -65,8 +62,6 @@ bot.on('message', async (msg) => {
   // START
   if (texto === '/start') {
 
-    sessionHistory.delete(chatId);
-
     bot.sendMessage(
       chatId,
       'Kevin online e operacional.'
@@ -87,14 +82,10 @@ bot.on('message', async (msg) => {
 
     bot.sendChatAction(chatId, 'typing');
 
-    const history =
-    sessionHistory.get(chatId) || [];
-
     const resposta =
     await processMessage({
 
       texto,
-      history,
 
       profileFile:
       './memory/profile.json',
@@ -108,16 +99,6 @@ bot.on('message', async (msg) => {
       conversationsFile:
       './memory/conversations.json'
     });
-
-    history.push(
-      { role: 'user', content: texto },
-      { role: 'assistant', content: resposta }
-    );
-
-    sessionHistory.set(
-      chatId,
-      history.slice(-MAX_HISTORY_MESSAGES)
-    );
 
     sendLong(chatId, resposta);
 

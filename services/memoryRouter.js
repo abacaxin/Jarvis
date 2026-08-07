@@ -199,9 +199,22 @@ function saveConversation(
   save(path, trimmed);
 }
 
+function loadHistory(path, turns = 10) {
+
+  const conversations = load(path);
+
+  return conversations
+  .slice(-turns)
+  .flatMap(c => [
+    { role: 'user', content: c.user },
+    { role: 'assistant', content: c.assistant }
+  ]);
+}
+
 module.exports = {
 
   saveProject,
   saveKnowledge,
-  saveConversation
+  saveConversation,
+  loadHistory
 };

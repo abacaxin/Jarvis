@@ -5,8 +5,11 @@ const logger = require('../services/logger');
 const {
   saveProject,
   saveKnowledge,
-  saveConversation
+  saveConversation,
+  loadHistory
 } = require('../services/memoryRouter');
+
+const HISTORY_TURNS = 10;
 
 const KNOWLEDGE_CATEGORIES = [
   'tecnico',
@@ -122,8 +125,7 @@ async function processMessage({
   profileFile,
   projectsFile,
   knowledgeFile,
-  conversationsFile,
-  history = []
+  conversationsFile
 
 }) {
 
@@ -139,6 +141,11 @@ async function processMessage({
 
   const knowledge =
   loadJSON(knowledgeFile);
+
+  // Historico vem do disco (conversations.json), nao de um Map em RAM —
+  // sobrevive a restart do processo (deploy, crash, realocacao no Railway).
+  const history =
+  loadHistory(conversationsFile, HISTORY_TURNS);
 
   // ----------------------
   // MEMORY CONTEXT

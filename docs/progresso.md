@@ -28,9 +28,11 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Error handling estruturado + logs reais**: `services/logger.js` (timestamp + nível) substitui `console.log` solto. `index.js` ganhou handlers de `uncaughtException`/`unhandledRejection` (loga e sai — PM2 reinicia limpo em vez de estado indefinido). `memoryRouter.js` e `assistantBrain.js` não crasham mais se um arquivo de memória estiver com JSON corrompido — logam warning e resetam pro fallback.
 - [x] `conversations.json` também ganhou teto (500 entradas).
 
+- [x] **Deploy 24/7 (Railway)**: feito, repo em [github.com/abacaxin/Jarvis](https://github.com/abacaxin/Jarvis) conectado, push na `main` faz redeploy automático.
+- [x] **Bug pós-deploy: sessão perdia contexto entre mensagens no Railway** — `sessionHistory` (Map em RAM) zerava a cada restart do processo. Trocado por `loadHistory()`, que lê `conversations.json` do disco (ver [decisoes.md](decisoes.md)). `index.js` não mantém mais estado de sessão em memória.
+
 ## Pendente
 
-- [ ] Deploy 24/7 (Railway, conforme planejamento original) — passo a passo pronto em [deploy.md](deploy.md), falta você criar o repo no GitHub (ou passar a URL de um existente) e a conta/projeto no Railway pra eu continuar
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
 
 ## Bloqueado / precisa de ação externa
