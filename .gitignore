@@ -4,3 +4,5 @@ node_modules/
 memory/conversations.json
 memory/projects.json
 memory/knowledge.json
+
+.claude/settings.local.json

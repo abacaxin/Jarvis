@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(unzip -l \"/c/Users/Pichau/Downloads/Jarvis-main.zip\")"
-    ]
-  }
-}
