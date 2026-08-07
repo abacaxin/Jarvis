@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const TelegramBot = require('node-telegram-bot-api');
 
-const { processMessage } =
+const { processMessage, detectMode } =
 require('./core/assistantBrain');
 
 const token = process.env.TOKEN;
@@ -54,6 +54,14 @@ bot.on('message', async (msg) => {
   }
 
   try {
+
+    if (detectMode(texto) === 'deep') {
+
+      bot.sendMessage(
+        chatId,
+        '🧠 Modo análise ativado...'
+      );
+    }
 
     bot.sendChatAction(chatId, 'typing');
 

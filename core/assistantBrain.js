@@ -12,7 +12,31 @@ const openai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-const FAST_MODEL = 'openai/gpt-oss-120b';
+// Só openai/gpt-oss-20b e openai/gpt-oss-120b suportam response_format
+// json_schema estrito na Groq (ver docs/decisoes.md) — por isso os dois
+// modos usam modelos dessa família em vez de llama/qwen/deepseek.
+const MODELS = {
+  fast: 'openai/gpt-oss-20b',
+  deep: 'openai/gpt-oss-120b'
+};
+
+const DEEP_TRIGGERS = [
+  'full analysis',
+  'análise completa',
+  'pensamento crítico',
+  'me explica a fundo',
+  'analisa isso',
+  '/deep'
+];
+
+function detectMode(texto) {
+
+  const lower = texto.toLowerCase();
+
+  return DEEP_TRIGGERS.some(t => lower.includes(t))
+    ? 'deep'
+    : 'fast';
+}
 
 // ----------------------
 // LOAD JSON
@@ -118,6 +142,8 @@ ${knowledge
   // SINGLE UNIFIED CALL
   // ----------------------
 
+  const mode = detectMode(texto);
+
   let decision;
 
   try {
@@ -125,7 +151,7 @@ ${knowledge
     const response =
     await openai.chat.completions.create({
 
-      model: FAST_MODEL,
+      model: MODELS[mode],
 
       response_format: RESPONSE_SCHEMA,
 
@@ -241,5 +267,6 @@ Regras para o campo resposta:
 }
 
 module.exports = {
-  processMessage
+  processMessage,
+  detectMode
 };

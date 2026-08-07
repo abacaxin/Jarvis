@@ -20,9 +20,12 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
   - `memory/*.json` (dados pessoais/conversas) estava sendo versionado no git — removido do tracking (fica só local).
   - Sem `polling_error` handler e sem proteção contra resposta acima de 4096 chars (limite do Telegram) — ambos adicionados em `index.js`.
 
+- [x] **Bloco 4 — Fast/Deep mode**: `DEEP_TRIGGERS` + `detectMode(texto)` em `core/assistantBrain.js`. Fast usa `openai/gpt-oss-20b`, Deep usa `openai/gpt-oss-120b` (os únicos dois modelos Groq com `json_schema` estrito — mantém a garantia do Bloco 2 nos dois modos). Feedback visual ("🧠 Modo análise ativado...") enviado em `index.js` antes do typing indicator quando o modo deep é detectado.
+
+**Sprint original 100% concluído** (blocos 1 a 5 do plano).
+
 ## Pendente
 
-- [ ] **Bloco 4 — Fast/Deep mode**: `DEEP_TRIGGERS`, `detectMode(texto)`, mapear cada modo pra um modelo Groq diferente (lembrar: só `openai/gpt-oss-20b`/`120b` suportam `json_schema` estrito — ver decisoes.md), feedback visual quando Deep Mode ativa.
 - [ ] Refatorar `knowledge.json` (categorias, controle de crescimento, dedup — mesmo problema que projects tinha)
 - [ ] Error handling estruturado + logs reais
 - [ ] Deploy 24/7 (Railway, conforme planejamento original)
