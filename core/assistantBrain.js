@@ -6,7 +6,9 @@ const {
   saveProject,
   saveKnowledge,
   saveConversation,
-  loadHistory
+  loadHistory,
+  saveTodo,
+  completeTodo
 } = require('../services/memoryRouter');
 
 const HISTORY_TURNS = 10;
@@ -130,6 +132,11 @@ const RESPONSE_SCHEMA = {
           type: ['string', 'null'],
           enum: [...KNOWLEDGE_CATEGORIES, null]
         },
+        todo_action: {
+          type: ['string', 'null'],
+          enum: ['add', 'complete', null]
+        },
+        todo_text: { type: ['string', 'null'] },
         summary: { type: 'string' }
       },
       required: [
@@ -138,6 +145,8 @@ const RESPONSE_SCHEMA = {
         'project_name',
         'save_knowledge',
         'knowledge_category',
+        'todo_action',
+        'todo_text',
         'summary'
       ],
       additionalProperties: false
@@ -155,7 +164,8 @@ async function processMessage({
   profileFile,
   projectsFile,
   knowledgeFile,
-  conversationsFile
+  conversationsFile,
+  todosFile
 
 }) {
 
@@ -171,6 +181,9 @@ async function processMessage({
 
   const knowledge =
   loadJSON(knowledgeFile);
+
+  const todos =
+  loadJSON(todosFile);
 
   // Historico vem do disco (conversations.json), nao de um Map em RAM —
   // sobrevive a restart do processo (deploy, crash, realocacao no Railway).
@@ -218,6 +231,11 @@ async function processMessage({
   .filter(Boolean)
   .join('\n\n');
 
+  const pendingTodos = todos
+  .filter(t => t.status === 'pending')
+  .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  .slice(0, 20);
+
   const memoryContext = `
 PROJETOS ATIVOS (use o nome EXATAMENTE como está aqui se a mensagem for sobre um deles — não crie um projeto novo com nome diferente para a mesma coisa):
 ${activeProjects
@@ -227,6 +245,11 @@ ${activeProjects
 
 CONHECIMENTOS RECENTES (por categoria):
 ${knowledgeByCategory || '(nenhum)'}
+
+TO-DO PENDENTES (use o texto EXATAMENTE como está aqui em todo_text quando for marcar como concluído):
+${pendingTodos
+.map(t => `- ${t.text}`)
+.join('\n') || '(nenhum)'}
 `;
 
   // ----------------------
@@ -268,16 +291,19 @@ ${memoryContext}
 
 Responda em JSON com os campos:
 - resposta: sua resposta em texto natural para o usuário
-- save_project: true APENAS se a mensagem descreve ou avança um projeto/ideia/sistema contínuo real
+- save_project: true APENAS se a mensagem TRAZ informação nova sobre um projeto (decisão, progresso, mudança de escopo) — perguntas sobre o status/andamento do projeto NÃO contam, mesmo que a resposta relembre detalhes dele
 - project_name: nome do projeto (ou null se save_project for false). Se a mensagem for sobre um projeto que já está em PROJETOS ATIVOS, use o nome EXATAMENTE igual ao que já existe — isso atualiza o projeto em vez de criar um duplicado.
 - save_knowledge: true APENAS se a mensagem contém um fato técnico ou informação específica que vale lembrar depois
 - knowledge_category: quando save_knowledge for true, classifique em uma dessas categorias: ${KNOWLEDGE_CATEGORIES.join(', ')} (ou null se save_knowledge for false)
+- todo_action: "add" se a mensagem descreve uma tarefa nova e acionável que o usuário quer que você acompanhe; "complete" se a mensagem indica que uma tarefa da lista TO-DO PENDENTES foi concluída; null se não for nem uma coisa nem outra
+- todo_text: quando todo_action for "add", o texto da tarefa nova (curto, acionável); quando for "complete", o texto EXATAMENTE igual ao item correspondente em TO-DO PENDENTES; null se todo_action for null
 - summary: resumo curto da mensagem (usado para salvar projeto/conhecimento), sempre em português
 
-Regras importantes para save_project e save_knowledge:
-- Saudações, despedidas, small talk ("bom dia", "e aí", "tudo bem?", "boa noite") NUNCA contam como projeto ou conhecimento — nesses casos ambos ficam false
-- Perguntas sobre o que já existe na memória (ex: "quais projetos eu tenho?") NUNCA contam como novo projeto ou conhecimento
-- Na dúvida, prefira false — é melhor deixar de salvar algo relevante do que poluir a memória com lixo
+Regras importantes para save_project, save_knowledge e todo_action:
+- Saudações, despedidas, small talk ("bom dia", "e aí", "tudo bem?", "boa noite") NUNCA contam como projeto, conhecimento ou tarefa — nesses casos todos ficam false/null
+- Perguntas sobre o que já existe na memória (ex: "quais projetos eu tenho?", "o que falta na minha lista?") NUNCA contam como novo projeto, conhecimento ou tarefa — apenas responda usando o que já está no contexto acima
+- Só marque todo_action "complete" se conseguir identificar com confiança qual item da lista TO-DO PENDENTES o usuário quer dizer; se não tiver certeza, deixe null e pergunte na resposta
+- Na dúvida, prefira false/null — é melhor deixar de salvar algo relevante do que poluir a memória com lixo
 
 Regras para o campo resposta:
 - Fale em português, seguindo a personalidade descrita acima
@@ -350,6 +376,19 @@ Regras para o campo resposta:
       created_at:
       new Date()
     });
+  }
+
+  // ----------------------
+  // TODO
+  // ----------------------
+
+  if (decision.todo_action === 'add' && decision.todo_text) {
+
+    saveTodo(todosFile, decision.todo_text);
+
+  } else if (decision.todo_action === 'complete' && decision.todo_text) {
+
+    completeTodo(todosFile, decision.todo_text);
   }
 
   // ----------------------

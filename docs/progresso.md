@@ -11,7 +11,7 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
   - Duas chamadas LLM unificadas em uma só, com JSON Schema estrito (ver [decisoes.md](decisoes.md))
   - Modelo padrão trocado para Groq (`llama-3.3-70b-versatile`) — o plano original previa `openrouter/free`/`qwen3-8b:free`, mudou de provider (ver decisoes.md)
 
-- [x] **Bloco 3 — Contexto real**: `sessionHistory` (`Map` por `chatId`, últimas 10 trocas) implementado em `index.js`, injetado nas mensagens enviadas ao Groq em `assistantBrain.js`. Reseta ao mandar `/start`.
+- [x] **Bloco 3 — Contexto real**: histórico de conversa injetado nas mensagens enviadas ao Groq. Primeira versão usava `Map` em RAM por `chatId`; trocado depois por leitura do disco (`conversations.json`) — ver seção mais abaixo sobre o bug de memória no Railway.
 - [x] **Correções encontradas na análise fullstack (2026-08-07)**:
   - `saveProject` fazia só `push` — todo projeto em andamento virava uma linha nova a cada mensagem (visto em produção: "Mini robô de bancada" duplicado). Agora faz upsert por nome (case-insensitive), acumulando um `history[]` por projeto.
   - Prompt salvava small talk ("Boa noite") como projeto e conhecimento ao mesmo tempo — regras explícitas anti-falso-positivo adicionadas, e o prompt agora lista os nomes de projetos ativos pra o modelo reusar o nome exato em vez de duplicar.
@@ -33,11 +33,10 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 
 - [x] **Personalidade estilo Jarvis/Edith**: prompt reescrito com o tom escolhido pelo usuário (competente, direto, humor seco e ocasional). Ver [decisoes.md](decisoes.md).
 - [x] **Relevância de memória**: `knowledge` agora é selecionado por overlap de palavras com a mensagem atual + leve peso por `hits`, com fallback pra recência quando não há overlap. `projects` continua só por recência de propósito (ver decisoes.md — risco de duplicar é pior que gastar contexto extra).
+- [x] **To-do list**: `memory/todos.json`, campos `todo_action`/`todo_text` no schema único. Marcar como concluído exige o modelo reusar o texto exato da lista TO-DO PENDENTES (mesmo princípio anti-duplicação do upsert de projeto). Testado direto (add → listar → complete → listar de novo), funcionou de primeira.
+- [x] **Efeito de "digitando"**: placeholder "💭 Pensando..." editado com a resposta final (`bot.editMessageText`) + indicador nativo do Telegram mantido vivo via `setInterval` (expira sozinho a cada ~5s). Streaming de verdade não é possível junto com `json_schema` estrito na Groq — ver decisoes.md.
+- [x] **Ajuste de precisão**: `save_project` exigia só "descrever ou avançar" o projeto — vago demais, uma pergunta de status ("e o robô, o que falta?") disparava salvamento e sobrescrevia a descrição com algo mais vago. Regra reforçada pra exigir informação nova (decisão/progresso real). Revalidado depois do ajuste.
 
 ## Pendente
 
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
-
-## Bloqueado / precisa de ação externa
-
-- `.env` local ainda não foi criado — falta `TOKEN` (Telegram) e `GROQ_API_KEY` (Groq) pra rodar e testar de fato. Nenhum bloco foi testado em execução real ainda, só verificado por sintaxe (`node -c`).

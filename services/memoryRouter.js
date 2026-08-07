@@ -3,6 +3,14 @@ const logger = require('./logger');
 
 const MAX_KNOWLEDGE = 300;
 const MAX_CONVERSATIONS = 500;
+const MAX_TODOS = 200;
+
+function normalize(text) {
+
+  return (text || '')
+  .trim()
+  .toLowerCase();
+}
 
 // ----------------------
 // LOAD
@@ -63,20 +71,13 @@ function save(path, data) {
 // PROJECTS
 // ----------------------
 
-function normalizeName(name) {
-
-  return (name || '')
-  .trim()
-  .toLowerCase();
-}
-
 function saveProject(path, project) {
 
   const projects = load(path);
 
   const existing = projects.find(p =>
     p.status !== 'done' &&
-    normalizeName(p.name) === normalizeName(project.name)
+    normalize(p.name) === normalize(project.name)
   );
 
   if (existing) {
@@ -127,19 +128,12 @@ function saveProject(path, project) {
 // KNOWLEDGE
 // ----------------------
 
-function normalizeValue(value) {
-
-  return (value || '')
-  .trim()
-  .toLowerCase();
-}
-
 function saveKnowledge(path, item) {
 
   const knowledge = load(path);
 
   const existing = knowledge.find(k =>
-    normalizeValue(k.value) === normalizeValue(item.value)
+    normalize(k.value) === normalize(item.value)
   );
 
   if (existing) {
@@ -211,10 +205,66 @@ function loadHistory(path, turns = 10) {
   ]);
 }
 
+// ----------------------
+// TODOS
+// ----------------------
+
+function saveTodo(path, text) {
+
+  const todos = load(path);
+
+  todos.push({
+
+    id: Date.now(),
+
+    text,
+    status: 'pending',
+
+    created_at: new Date()
+  });
+
+  const trimmed = todos.length > MAX_TODOS
+    ? todos.slice(todos.length - MAX_TODOS)
+    : todos;
+
+  save(path, trimmed);
+}
+
+// so completa se o texto bater EXATO (normalizado) com um pendente —
+// mesma logica do upsert de projeto: o prompt manda o modelo reusar o
+// texto tal como esta na lista, em vez de tentar casar por similaridade
+function completeTodo(path, text) {
+
+  const todos = load(path);
+
+  const target = todos.find(t =>
+    t.status === 'pending' &&
+    normalize(t.text) === normalize(text)
+  );
+
+  if (!target) {
+
+    logger.warn(
+      `Nenhum to-do pendente bateu com: "${text}"`
+    );
+
+    return null;
+  }
+
+  target.status = 'done';
+  target.completed_at = new Date();
+
+  save(path, todos);
+
+  return target;
+}
+
 module.exports = {
 
   saveProject,
   saveKnowledge,
   saveConversation,
-  loadHistory
+  loadHistory,
+  saveTodo,
+  completeTodo
 };

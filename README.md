@@ -1,6 +1,6 @@
 # Kevin
 
-Assistente pessoal contínuo via Telegram, com memória persistente de projetos e conhecimento entre conversas.
+Assistente pessoal contínuo via Telegram, no estilo Jarvis/Edith — memória persistente de projetos, conhecimento e tarefas entre conversas.
 
 ## Stack real
 
@@ -40,11 +40,13 @@ Kevin/
 │   └── assistantBrain.js   → chamada única ao LLM, decide resposta + o que salvar na memória
 ├── memory/
 │   ├── profile.json        → nome do usuário e do assistente
-│   ├── projects.json       → projetos identificados nas conversas
-│   ├── knowledge.json      → fatos/conhecimento identificados nas conversas
-│   └── conversations.json  → histórico bruto (ainda não é lido de volta — ver docs/progresso.md)
+│   ├── projects.json       → projetos identificados nas conversas (upsert por nome)
+│   ├── knowledge.json      → fatos/conhecimento, com categoria e dedup
+│   ├── todos.json          → tarefas (add/complete via conversa)
+│   └── conversations.json  → histórico bruto, também usado como memória de sessão
 ├── services/
-│   └── memoryRouter.js     → load/save dos arquivos de memória
+│   ├── memoryRouter.js     → load/save dos arquivos de memória
+│   └── logger.js           → log estruturado (timestamp + nível)
 ├── docs/                   → decisões de arquitetura e progresso do sprint
 ├── index.js                → bot Telegram, entrada principal
 └── ecosystem.config.js     → config do PM2

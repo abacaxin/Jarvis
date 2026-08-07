@@ -43,6 +43,20 @@ Trocar o modelo é uma linha em `FAST_MODEL` no topo de `core/assistantBrain.js`
 
 Se o tom não estiver batendo, o ajuste é só no bloco "Personalidade" dentro do system prompt em `core/assistantBrain.js` — não precisa mexer em mais nada.
 
+## To-do list segue o mesmo padrão do upsert de projeto
+
+**Decisão:** `todo_action` ("add"/"complete"/null) + `todo_text` no schema único, igual o resto. Pra marcar uma tarefa como concluída, o modelo precisa reusar o texto EXATAMENTE como aparece em TO-DO PENDENTES no prompt — sem matching difuso (fuzzy) no código.
+
+**Por quê:** a mesma lógica que evita duplicar projeto (dar ao modelo a lista exata pra ele referenciar por nome) evita completar a tarefa errada aqui. Fuzzy matching (por similaridade de texto) é mais flexível mas arrisca marcar como feita uma tarefa parecida só na superfície; matching exato contra uma lista que o próprio modelo já viu é mais previsível — se `completeTodo()` não achar bate exato, ela loga um warning e não faz nada (fail-safe, não fail-silent-errado).
+
+Testado direto contra `processMessage` (add → listar → complete → listar de novo): funcionou de primeira, inclusive puxando o nome do usuário na confirmação ("Parabéns, Dan!").
+
+## Efeito de "digitando" sem streaming real
+
+**Decisão:** Groq não suporta streaming junto com `response_format: json_schema` estrito — então não dá pra fazer streaming token-a-token sem abrir mão da garantia de JSON bem formado do Bloco 2 (não vale a troca). Em vez disso: manda uma mensagem placeholder ("💭 Pensando...") na hora, mantém o indicador nativo "digitando..." do Telegram vivo via `setInterval` (ele expira sozinho a cada ~5s), e edita o placeholder com a resposta final quando chega (`bot.editMessageText`).
+
+**Efeito colateral encontrado e corrigido:** a regra "pergunta sobre o que já existe na memória não conta como novo conteúdo" só cobria to-do e listagem explícita — uma pergunta tipo "e o robô, o que falta?" ainda disparava `save_project` e sobrescrevia a descrição do projeto com uma versão mais vaga. Regra de `save_project` reforçada pra exigir informação NOVA (decisão/progresso/mudança de escopo), não só uma pergunta de status. Revalidado depois do ajuste — parou de disparar.
+
 ## PM2 para gerenciar o processo
 
 **Decisão:** rodar via PM2 (`ecosystem.config.js`) em vez de `node index.js` direto.

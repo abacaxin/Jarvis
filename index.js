@@ -40,15 +40,55 @@ bot.on('polling_error', (erro) => {
 });
 
 const TELEGRAM_MAX_LENGTH = 4000;
+const TYPING_REFRESH_MS = 4000;
 
-function sendLong(chatId, texto) {
+function startTypingLoop(chatId) {
+
+  bot.sendChatAction(chatId, 'typing').catch(() => {});
+
+  return setInterval(() => {
+
+    bot.sendChatAction(chatId, 'typing').catch(() => {});
+
+  }, TYPING_REFRESH_MS);
+}
+
+async function sendLong(chatId, texto, placeholderId) {
+
+  const chunks = [];
 
   for (let i = 0; i < texto.length; i += TELEGRAM_MAX_LENGTH) {
 
-    bot.sendMessage(
-      chatId,
-      texto.slice(i, i + TELEGRAM_MAX_LENGTH)
-    );
+    chunks.push(texto.slice(i, i + TELEGRAM_MAX_LENGTH));
+  }
+
+  if (placeholderId) {
+
+    try {
+
+      await bot.editMessageText(chunks[0], {
+        chat_id: chatId,
+        message_id: placeholderId
+      });
+
+    } catch (erro) {
+
+      logger.warn(
+        'Falha ao editar mensagem, enviando nova',
+        erro.message
+      );
+
+      await bot.sendMessage(chatId, chunks[0]);
+    }
+
+  } else {
+
+    await bot.sendMessage(chatId, chunks[0]);
+  }
+
+  for (let i = 1; i < chunks.length; i++) {
+
+    await bot.sendMessage(chatId, chunks[i]);
   }
 }
 
@@ -70,17 +110,22 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  let typingLoop;
+
   try {
 
     if (detectMode(texto) === 'deep') {
 
-      bot.sendMessage(
+      await bot.sendMessage(
         chatId,
         '🧠 Modo análise ativado...'
       );
     }
 
-    bot.sendChatAction(chatId, 'typing');
+    const placeholder =
+    await bot.sendMessage(chatId, '💭 Pensando...');
+
+    typingLoop = startTypingLoop(chatId);
 
     const resposta =
     await processMessage({
@@ -97,10 +142,13 @@ bot.on('message', async (msg) => {
       './memory/knowledge.json',
 
       conversationsFile:
-      './memory/conversations.json'
+      './memory/conversations.json',
+
+      todosFile:
+      './memory/todos.json'
     });
 
-    sendLong(chatId, resposta);
+    await sendLong(chatId, resposta, placeholder.message_id);
 
   } catch (erro) {
 
@@ -110,5 +158,9 @@ bot.on('message', async (msg) => {
       chatId,
       'Erro no cérebro.'
     );
+
+  } finally {
+
+    if (typingLoop) clearInterval(typingLoop);
   }
 });
