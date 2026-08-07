@@ -12,6 +12,8 @@ const openai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
+const FAST_MODEL = 'llama-3.3-70b-versatile';
+
 // ----------------------
 // LOAD JSON
 // ----------------------
@@ -29,64 +31,34 @@ function loadJSON(path, fallback = []) {
 }
 
 // ----------------------
-// ANALYZE INTENTION
+// RESPONSE SCHEMA
 // ----------------------
 
-async function analyzeIntent(texto) {
-
-  const response =
-  await openai.chat.completions.create({
-
-    model: 'llama-3.1-8b-instant',
-
-    messages: [
-
-      {
-        role: 'system',
-
-        content: `
-Você é um sistema de análise de intenção.
-
-Responda APENAS JSON válido.
-
-Formato:
-
-{
-  "is_project": boolean,
-  "project_name": string | null,
-  "should_save_knowledge": boolean,
-  "summary": string
-}
-
-Regras:
-- Projetos são ideias contínuas, sistemas, construções ou desenvolvimento
-- Conhecimento é informação técnica ou relevante
-`
+const RESPONSE_SCHEMA = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'kevin_response',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        resposta: { type: 'string' },
+        save_project: { type: 'boolean' },
+        project_name: { type: ['string', 'null'] },
+        save_knowledge: { type: 'boolean' },
+        summary: { type: 'string' }
       },
-
-      {
-        role: 'user',
-        content: texto
-      }
-    ]
-  });
-
-  try {
-
-    return JSON.parse(
-      response.choices[0].message.content
-    );
-
-  } catch {
-
-    return {
-      is_project: false,
-      project_name: null,
-      should_save_knowledge: false,
-      summary: texto
-    };
+      required: [
+        'resposta',
+        'save_project',
+        'project_name',
+        'save_knowledge',
+        'summary'
+      ],
+      additionalProperties: false
+    }
   }
-}
+};
 
 // ----------------------
 // MAIN BRAIN
@@ -116,17 +88,89 @@ async function processMessage({
   loadJSON(knowledgeFile);
 
   // ----------------------
-  // INTENTION ENGINE
+  // MEMORY CONTEXT
   // ----------------------
 
-  const decision =
-  await analyzeIntent(texto);
+  const memoryContext = `
+PROJETOS:
+${projects
+.map(p =>
+`- ${p.name}: ${p.description}`)
+.join('\n')}
+
+CONHECIMENTOS:
+${knowledge
+.slice(-20)
+.map(k =>
+`- ${k.value}`)
+.join('\n')}
+`;
+
+  // ----------------------
+  // SINGLE UNIFIED CALL
+  // ----------------------
+
+  let decision;
+
+  try {
+
+    const response =
+    await openai.chat.completions.create({
+
+      model: FAST_MODEL,
+
+      response_format: RESPONSE_SCHEMA,
+
+      messages: [
+
+        {
+          role: 'system',
+
+          content: `
+Você é ${profile.assistant_name || 'Kevin'}, um assistente pessoal contínuo.
+
+Você acompanha projetos, evolução e contexto do usuário.
+
+${memoryContext}
+
+Responda em JSON com os campos:
+- resposta: sua resposta em texto natural para o usuário
+- save_project: true se a mensagem descreve um projeto/ideia/sistema contínuo novo
+- project_name: nome do projeto (ou null se save_project for false)
+- save_knowledge: true se a mensagem contém informação técnica ou relevante para lembrar
+- summary: resumo curto da mensagem (usado para salvar projeto/conhecimento)
+
+Regras para o campo resposta:
+- Fale naturalmente
+- Seja direto
+- Não pareça um chatbot genérico
+- Considere continuidade
+`
+        },
+
+        {
+          role: 'user',
+          content: texto
+        }
+      ]
+    });
+
+    decision = JSON.parse(
+      response.choices[0].message.content
+    );
+
+  } catch (erro) {
+
+    console.log('Erro na chamada LLM:', erro);
+
+    return 'Deu ruim aqui do meu lado, tenta de novo.';
+  }
 
   // ----------------------
   // SAVE PROJECT
   // ----------------------
 
-  if (decision.is_project) {
+  if (decision.save_project) {
 
     saveProject(projectsFile, {
 
@@ -150,9 +194,7 @@ async function processMessage({
   // SAVE KNOWLEDGE
   // ----------------------
 
-  if (
-    decision.should_save_knowledge
-  ) {
+  if (decision.save_knowledge) {
 
     saveKnowledge(knowledgeFile, {
 
@@ -169,79 +211,16 @@ async function processMessage({
   }
 
   // ----------------------
-  // MEMORY CONTEXT
-  // ----------------------
-
-  const memoryContext = `
-
-PROJETOS:
-${projects
-.map(p =>
-`- ${p.name}: ${p.description}`)
-.join('\n')}
-
-CONHECIMENTOS:
-${knowledge
-.slice(-20)
-.map(k =>
-`- ${k.value}`)
-.join('\n')}
-`;
-
-  // ----------------------
-  // FINAL RESPONSE
-  // ----------------------
-
-  const response =
-  await openai.chat.completions.create({
-
-    model: 'llama-3.3-70b-versatile',
-
-    messages: [
-
-      {
-        role: 'system',
-
-        content: `
-Você é ${profile.assistant_name || 'Kevin'}.
-
-Você é um assistente pessoal contínuo.
-
-Você acompanha projetos,
-evolução e contexto do usuário.
-
-${memoryContext}
-
-Regras:
-- Fale naturalmente
-- Seja direto
-- Não pareça um chatbot genérico
-- Considere continuidade
-`
-      },
-
-      {
-        role: 'user',
-        content: texto
-      }
-    ]
-  });
-
-  const resposta =
-  response.choices[0]
-  .message.content;
-
-  // ----------------------
   // SAVE CONVERSATION
   // ----------------------
 
   saveConversation(
     conversationsFile,
     texto,
-    resposta
+    decision.resposta
   );
 
-  return resposta;
+  return decision.resposta;
 }
 
 module.exports = {
