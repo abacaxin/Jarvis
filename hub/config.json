@@ -1,0 +1,10 @@
+{
+  "port": 8765,
+  "command_timeout_ms": 5000,
+  "devices": {
+    "quarto_luz": {
+      "description": "Relé que controla a luz do quarto",
+      "actions": ["on", "off"]
+    }
+  }
+}

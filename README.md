@@ -8,6 +8,7 @@ Assistente pessoal contínuo via Telegram, no estilo Jarvis/Edith — memória p
 - `node-telegram-bot-api` — interface via Telegram (polling)
 - Groq (SDK `openai`, endpoint compatível) — LLM
 - `fs-extra` — memória persistida em JSON (`memory/*.json`)
+- `ws` — servidor/cliente WebSocket do hub de dispositivos (`hub/`)
 - PM2 — gerenciamento de processo (restart automático)
 
 ## Como rodar localmente
@@ -53,6 +54,7 @@ Kevin/
 ├── docs/                   → decisões de arquitetura e progresso do sprint
 ├── vision/                 → visão computacional (protótipo experimental, ver vision/README.md)
 ├── voice/                  → entrada por voz (protótipo experimental, local — ver abaixo)
+├── hub/                    → hub WebSocket pra dispositivos ESP32 da casa (ver hub/README.md)
 ├── index.js                → bot Telegram, entrada principal
 └── ecosystem.config.js     → config do PM2
 ```
@@ -76,6 +78,17 @@ O Kevin responde em **dois pacotes**: `resposta` (texto completo, usada no Teleg
 O áudio gravado passa por supressão de ruído (`noisereduce`, spectral gating, sem PyTorch — ver [docs/decisoes.md](docs/decisoes.md)) antes de virar arquivo, tentando melhorar a transcrição em ambiente barulhento.
 
 **Deploy alvo: Raspberry Pi 3B.** Visão (MediaPipe) e wake word (onnxruntime) têm suporte melhor em Raspberry Pi OS de 64 bits — confirmar com `uname -m` no Pi (`aarch64` = ok, `armv7l` = vai dar trabalho). Ver [docs/decisoes.md](docs/decisoes.md) pro levantamento completo de risco de compatibilidade, ainda não validado no hardware real.
+
+## Hub de automação residencial (experimental)
+
+O Raspberry Pi que hospeda o Kevin também é o servidor central da casa — não só do bot (ver [docs/visao-produto.md](docs/visao-produto.md)). `hub/server.js` é um processo **separado** do Kevin que aceita conexão WebSocket de dispositivos ESP32; `hub/interface/hubClient.js` é a ponte que o `index.js` usa sem saber que existe WebSocket por trás (mesmo princípio da visão). Primeiro dispositivo: relé controlando a luz do quarto, acionado por comando explícito `/luz on`/`/luz off` no Telegram — não é o LLM decidindo sozinho (ação com efeito físico real, sem camada de permissão ainda, ver docs/decisoes.md).
+
+```bash
+npm run hub:test    # valida o protocolo ponta a ponta sem hardware nenhum
+npm run hub:start   # sobe o servidor de verdade (no Pi, junto do bot)
+```
+
+Ver [hub/README.md](hub/README.md).
 
 ## Status atual
 

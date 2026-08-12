@@ -8,6 +8,7 @@ require('./core/assistantBrain');
 
 const visionService = require('./vision/interface/visionService');
 const { describeImage } = require('./services/visionAnalyzer');
+const { sendCommand: sendHubCommand } = require('./hub/interface/hubClient');
 
 const token = process.env.TOKEN;
 
@@ -276,6 +277,32 @@ bot.on('message', async (msg) => {
   if (texto === '/pare' || texto === '/parar') {
 
     return handleStopVisionCommand(chatId);
+  }
+
+  // LUZ
+  // Comando explicito, nao decisao do LLM — acao com efeito fisico real,
+  // sem camada de permissao/confirmacao ainda (ver docs/visao-produto.md).
+  if (texto === '/luz on' || texto === '/luz off') {
+
+    const acao = texto.endsWith('on') ? 'on' : 'off';
+
+    try {
+
+      await sendHubCommand('quarto_luz', acao);
+
+      await bot.sendMessage(
+        chatId,
+        acao === 'on' ? 'Luz ligada.' : 'Luz apagada.'
+      );
+
+    } catch (erro) {
+
+      logger.error('Erro no comando de luz', erro);
+
+      await bot.sendMessage(chatId, `Não consegui: ${erro.message}`);
+    }
+
+    return;
   }
 
   let typingLoop;

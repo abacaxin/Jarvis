@@ -4,6 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "hub:start": "node hub/server.js",
+    "hub:test": "node hub/test/test_hub.js",
     "vision:test": "node vision/interface/simulateKevinCommand.js",
     "voice:test": "node voice/interface/simulateVoiceConversation.js",
     "voice:wake": "node voice/interface/simulateWakeWordConversation.js"
@@ -12,6 +14,7 @@
     "dotenv": "^16.5.0",
     "fs-extra": "^11.2.0",
     "node-telegram-bot-api": "^0.66.0",
-    "openai": "^4.103.0"
+    "openai": "^4.103.0",
+    "ws": "^8.21.3"
   }
 }

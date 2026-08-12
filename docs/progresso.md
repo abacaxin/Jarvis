@@ -37,6 +37,13 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Efeito de "digitando"**: placeholder "💭 Pensando..." editado com a resposta final (`bot.editMessageText`) + indicador nativo do Telegram mantido vivo via `setInterval` (expira sozinho a cada ~5s). Streaming de verdade não é possível junto com `json_schema` estrito na Groq — ver decisoes.md.
 - [x] **Ajuste de precisão**: `save_project` exigia só "descrever ou avançar" o projeto — vago demais, uma pergunta de status ("e o robô, o que falta?") disparava salvamento e sobrescrevia a descrição com algo mais vago. Regra reforçada pra exigir informação nova (decisão/progresso real). Revalidado depois do ajuste.
 
+- [x] **Visão computacional (protótipo)**: webcam + MediaPipe, ativado por `/foto`/`/vision`, reconhece gesto, tira foto, descreve via Groq e injeta no `processMessage`. Feito pelo usuário fora desta sessão, merge de `feature/vision-voice-assistant`. Ver [vision/README.md](../vision/README.md).
+- [x] **Voz (protótipo, local, sem Telegram)**: wake word "Hey Jarvis", transcrição via Groq Whisper, resposta falada via Edge TTS, sessão contínua sem repetir a wake word. Feito pelo usuário fora desta sessão. Ver [voice em README.md](../README.md).
+- [x] **Decisão: deploy real é Raspberry Pi 3B local, não Railway** — Railway fica documentado como fallback. Ver [visao-produto.md](visao-produto.md).
+- [x] **Hub WebSocket + luz do quarto (ESP32 + relé)**: `hub/server.js` (processo próprio) + `hub/interface/hubClient.js` (contrato pro Kevin) + firmware `hub/firmware/quarto_luz/quarto_luz.ino`. Comando explícito `/luz on`/`/luz off` em `index.js` — não é o LLM decidindo (mesmo motivo do `/foto`, ver decisoes.md). Protocolo validado ponta a ponta sem hardware real (`npm run hub:test`); firmware ainda não gravado/testado no ESP32 físico.
+
 ## Pendente
 
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
+- [ ] Firmware do ESP32 (`hub/firmware/quarto_luz`) precisa ser gravado e testado em hardware real — só o servidor/cliente Node foram validados
+- [ ] Confirmar se o SO do Raspberry Pi é 64 bits (`uname -m` → `aarch64`) antes de considerar a migração pro Pi pronta — MediaPipe e onnxruntime (voz) têm suporte problemático em 32 bits (ver decisoes.md)
