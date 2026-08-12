@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "vision:test": "node vision/interface/simulateKevinCommand.js",
+    "voice:test": "node voice/interface/simulateVoiceConversation.js",
+    "voice:wake": "node voice/interface/simulateWakeWordConversation.js"
   },
   "dependencies": {
     "dotenv": "^16.5.0",

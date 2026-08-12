@@ -1,0 +1,15 @@
+{
+  "samplerate": 16000,
+  "channels": 1,
+  "recordings_dir": "recordings",
+  "tts_voice": "pt-BR-AntonioNeural",
+  "tts_pitch": "-15Hz",
+  "tts_rate": "-8%",
+  "wake_word_model": "hey_jarvis",
+  "wake_word_threshold": 0.4,
+  "pre_roll_seconds": 1.5,
+  "silence_threshold": 500,
+  "silence_duration_seconds": 1.0,
+  "post_wakeword_grace_seconds": 4.0,
+  "max_recording_seconds": 30
+}
