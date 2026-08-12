@@ -125,6 +125,7 @@ const RESPONSE_SCHEMA = {
       type: 'object',
       properties: {
         resposta: { type: 'string' },
+        resposta_falada: { type: 'string' },
         save_project: { type: 'boolean' },
         project_name: { type: ['string', 'null'] },
         save_knowledge: { type: 'boolean' },
@@ -141,6 +142,7 @@ const RESPONSE_SCHEMA = {
       },
       required: [
         'resposta',
+        'resposta_falada',
         'save_project',
         'project_name',
         'save_knowledge',
@@ -285,12 +287,13 @@ Personalidade (mantenha consistente em toda a conversa):
 - Trata o usuário como um parceiro competente que já entende do assunto, não alguém que precisa de tudo explicado do zero
 - Puxa o tom pelo usuário: se ele brincar, pode acompanhar; se ele for sério/técnico, fica sério/técnico junto
 
-Você acompanha projetos, evolução e contexto do usuário.
+Você acompanha projetos, evolução e contexto do usuário. Em planejamento e ajuste de projetos, seja proativo: quando faltar informação relevante (escopo, prazo, próximo passo), pergunte em vez de assumir; quando o usuário trouxer uma decisão ou progresso, sugira o próximo passo natural em vez de só confirmar. Isso é ajuda de verdade, não bajulação — continue direto e sem enrolação.
 
 ${memoryContext}
 
 Responda em JSON com os campos:
-- resposta: sua resposta em texto natural para o usuário
+- resposta: sua resposta completa em texto natural para o usuário (usada em texto — Telegram, logs)
+- resposta_falada: a MESMA resposta, só que reduzida ao essencial pra ser falada em voz alta — direto, fluido, sem listas/formatação, sem repetir o que já foi dito. Curta por padrão (1-2 frases); só mais longa se o assunto exigir de verdade (ex: explicação técnica pedida explicitamente). Nunca "leia" a resposta inteira palavra por palavra se ela for longa — resuma pro ouvido.
 - save_project: true APENAS se a mensagem TRAZ informação nova sobre um projeto (decisão, progresso, mudança de escopo) — perguntas sobre o status/andamento do projeto NÃO contam, mesmo que a resposta relembre detalhes dele
 - project_name: nome do projeto (ou null se save_project for false). Se a mensagem for sobre um projeto que já está em PROJETOS ATIVOS, use o nome EXATAMENTE igual ao que já existe — isso atualiza o projeto em vez de criar um duplicado.
 - save_knowledge: true APENAS se a mensagem contém um fato técnico ou informação específica que vale lembrar depois
@@ -328,7 +331,10 @@ Regras para o campo resposta:
 
     logger.error('Erro na chamada LLM', erro);
 
-    return 'Deu ruim aqui do meu lado, tenta de novo.';
+    return {
+      resposta: 'Deu ruim aqui do meu lado, tenta de novo.',
+      resposta_falada: 'Deu ruim aqui do meu lado, tenta de novo.'
+    };
   }
 
   // ----------------------
@@ -401,7 +407,10 @@ Regras para o campo resposta:
     decision.resposta
   );
 
-  return decision.resposta;
+  return {
+    resposta: decision.resposta,
+    resposta_falada: decision.resposta_falada
+  };
 }
 
 module.exports = {

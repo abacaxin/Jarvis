@@ -1,0 +1,24 @@
+# sounddevice e numpy ja vem de graca como dependencia transitiva do
+# mediapipe (vision/requirements.txt) — listados aqui pra o modulo de
+# voz poder rodar sozinho, sem depender da visao estar instalada.
+sounddevice>=0.4,<0.6
+numpy>=1.24
+
+# TTS: Edge TTS (voz neural da Microsoft, gratis, sem chave de API —
+# ElevenLabs foi tentado, mas o plano free deles exige cartao/pode
+# cobrar, ver docs/decisoes.md). pygame so pra tocar o mp3 gerado
+# (playsound, a alternativa mais obvia, falhou o build no Windows).
+edge-tts>=6,<8
+pygame>=2.5
+
+# Wake word ("Hey Jarvis" pre-treinado por padrao): openWakeWord, roda
+# local, sem conta nem chave de API — Porcupine foi tentado primeiro,
+# mas exige cadastro que travou pro usuario (ver docs/decisoes.md).
+openwakeword>=0.6,<1
+
+# Supressao de ruido no audio gravado, antes de mandar pro Whisper.
+# NAO instalar o extra [pytorch] — a versao default (numpy/scipy, spectral
+# gating classico) e mais lenta que a variante com torch, mas torch nao
+# tem wheel confiavel pra Raspberry Pi 3B (alvo de deploy deste projeto,
+# ver docs/decisoes.md), entao fica de fora de proposito.
+noisereduce>=3,<4

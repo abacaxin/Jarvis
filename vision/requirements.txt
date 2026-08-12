@@ -1,0 +1,4 @@
+# mediapipe ja traz opencv-contrib-python como dependencia (fornece o
+# mesmo modulo cv2) — nao pinar opencv-python separado pra nao instalar
+# os dois pacotes de OpenCV juntos (conflitam, especialmente no Windows).
+mediapipe>=0.10,<0.11

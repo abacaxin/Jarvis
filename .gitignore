@@ -7,3 +7,14 @@ memory/knowledge.json
 memory/todos.json
 
 .claude/settings.local.json
+
+vision/captures/*.jpg
+vision/**/__pycache__/
+vision/venv/
+vision/detection/hand_landmarker.task
+
+voice/recordings/*.wav
+voice/**/__pycache__/
+voice/venv/
+voice/*.onnx
+voice/*.tflite

@@ -6,6 +6,9 @@ const logger = require('./services/logger');
 const { processMessage, detectMode } =
 require('./core/assistantBrain');
 
+const visionService = require('./vision/interface/visionService');
+const { describeImage } = require('./services/visionAnalyzer');
+
 const token = process.env.TOKEN;
 
 if (!token) {
@@ -35,12 +38,31 @@ const bot = new TelegramBot(token, {
 
 logger.info('Kevin online.');
 
+// sobe o processo Python da visao em segundo plano, sem esperar por
+// ele — paga o import pesado do mediapipe (~28s medidos nesta maquina)
+// durante o boot do Kevin, escondido, em vez de no primeiro /foto real.
+visionService.prewarm();
+
 bot.on('polling_error', (erro) => {
   logger.error('Erro de polling', erro);
 });
 
 const TELEGRAM_MAX_LENGTH = 4000;
 const TYPING_REFRESH_MS = 4000;
+
+// tempo sem nenhum gesto ate desligar a visao sozinha — reinicia a
+// cada foto tirada, entao uma sessao com fotos frequentes fica ativa
+// indefinidamente; so expira se ninguem gesticular por esse tempo.
+const VISION_IDLE_TIMEOUT_MS = 60000;
+
+const MEMORY_FILES = {
+
+  profileFile: './memory/profile.json',
+  projectsFile: './memory/projects.json',
+  knowledgeFile: './memory/knowledge.json',
+  conversationsFile: './memory/conversations.json',
+  todosFile: './memory/todos.json'
+};
 
 function startTypingLoop(chatId) {
 
@@ -92,6 +114,141 @@ async function sendLong(chatId, texto, placeholderId) {
   }
 }
 
+// COMANDO DE VISAO
+// Ativa o vision system e o deixa ativo — cada gesto reconhecido dispara
+// uma foto, descrita separadamente (services/visionAnalyzer.js, ver
+// docs/decisoes.md sobre por que nao entra na chamada unica do brain) e
+// injetada no Kevin normal (processMessage) como se fosse mensagem do
+// usuario. A sessao SO desliga por /pare ou por inatividade — nao mais
+// a cada foto (o engine ja tem cooldown proprio contra reconhecimento
+// fantasma logo apos uma acao, ver gestures.action_cooldown_seconds em
+// vision/config.json). Simulacao local fica em
+// vision/interface/simulateKevinCommand.js; esta e a ativacao real.
+let activeVisionCleanup = null;
+
+async function handleVisionCommand(chatId) {
+
+  if (visionService.getStatus().status !== 'idle') {
+
+    await bot.sendMessage(chatId, 'A visão já tá ativa, aguenta aí. Manda /pare pra desligar.');
+    return;
+  }
+
+  await bot.sendMessage(
+    chatId,
+    '📷 Visão ativada — feche o punho (ou junte e afaste as duas mãos) sempre que quiser uma foto. Manda /pare quando terminar.'
+  );
+
+  let idleTimeout;
+
+  const cleanup = () => {
+
+    clearTimeout(idleTimeout);
+    visionService.off('vision.capture.completed', onCapture);
+    visionService.off('vision.error', onError);
+    visionService.off('vision.process.exit', onProcessExit);
+    activeVisionCleanup = null;
+  };
+
+  const resetIdleTimeout = () => {
+
+    clearTimeout(idleTimeout);
+
+    idleTimeout = setTimeout(async () => {
+
+      cleanup();
+      visionService.stopGestureRecognition();
+      await bot.sendMessage(chatId, 'Visão desativada por inatividade.');
+
+    }, VISION_IDLE_TIMEOUT_MS);
+  };
+
+  const onCapture = async (result) => {
+
+    // continua ativo — a sessao so termina por /pare ou inatividade,
+    // nao a cada foto.
+    resetIdleTimeout();
+
+    await bot.sendMessage(chatId, '🖼️ Foto capturada, analisando...');
+
+    let descricao;
+
+    try {
+
+      descricao = await describeImage(result.path);
+
+    } catch (erro) {
+
+      logger.error('Erro analisando imagem', erro);
+      await bot.sendMessage(chatId, 'Tirei a foto, mas deu ruim analisando ela.');
+      return;
+    }
+
+    try {
+
+      const { resposta } = await processMessage({
+
+        texto: `[Acabei de tirar uma foto do ambiente usando a visão. O que a foto mostra: ${descricao}]`,
+        ...MEMORY_FILES
+      });
+
+      await bot.sendMessage(chatId, resposta);
+
+    } catch (erro) {
+
+      logger.error('Erro processando descricao da imagem', erro);
+      await bot.sendMessage(chatId, 'Tirei a foto e entendi o que é, mas deu ruim na resposta.');
+    }
+  };
+
+  const onError = async ({ message }) => {
+
+    cleanup();
+    visionService.stopGestureRecognition();
+
+    logger.error('Erro no vision system', message);
+    await bot.sendMessage(chatId, `Deu erro na visão: ${message}`);
+  };
+
+  // rede de seguranca: se o processo Python cair sem passar por
+  // emit_error() (crash bruto, fora do try/except do engine.py), a
+  // sessao ficaria "presa" sem ninguem avisar o usuario. Saida limpa
+  // (code 0, ex: alguem fechou a janela de debug com "q") nao e erro —
+  // so avisa em saida inesperada.
+  const onProcessExit = async ({ code }) => {
+
+    if (code === 0) return;
+
+    cleanup();
+
+    logger.error(`Vision engine encerrou inesperadamente (codigo ${code})`);
+    await bot.sendMessage(chatId, 'A visão parou de responder. Manda /foto pra tentar de novo.');
+  };
+
+  visionService.on('vision.capture.completed', onCapture);
+  visionService.on('vision.error', onError);
+  visionService.on('vision.process.exit', onProcessExit);
+
+  activeVisionCleanup = cleanup;
+
+  resetIdleTimeout();
+  visionService.startGestureRecognition({ show: false });
+}
+
+async function handleStopVisionCommand(chatId) {
+
+  if (visionService.getStatus().status === 'idle') {
+
+    await bot.sendMessage(chatId, 'A visão já não tá ativa.');
+    return;
+  }
+
+  if (activeVisionCleanup) activeVisionCleanup();
+  visionService.stopGestureRecognition();
+
+  await bot.sendMessage(chatId, 'Visão desativada.');
+}
+
 bot.on('message', async (msg) => {
 
   const chatId = msg.chat.id;
@@ -108,6 +265,17 @@ bot.on('message', async (msg) => {
     );
 
     return;
+  }
+
+  // VISAO
+  if (texto === '/foto' || texto === '/vision') {
+
+    return handleVisionCommand(chatId);
+  }
+
+  if (texto === '/pare' || texto === '/parar') {
+
+    return handleStopVisionCommand(chatId);
   }
 
   let typingLoop;
@@ -127,25 +295,11 @@ bot.on('message', async (msg) => {
 
     typingLoop = startTypingLoop(chatId);
 
-    const resposta =
+    const { resposta } =
     await processMessage({
 
       texto,
-
-      profileFile:
-      './memory/profile.json',
-
-      projectsFile:
-      './memory/projects.json',
-
-      knowledgeFile:
-      './memory/knowledge.json',
-
-      conversationsFile:
-      './memory/conversations.json',
-
-      todosFile:
-      './memory/todos.json'
+      ...MEMORY_FILES
     });
 
     await sendLong(chatId, resposta, placeholder.message_id);
