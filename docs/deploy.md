@@ -4,7 +4,9 @@
 
 ## Deploy real: Raspberry Pi 3B
 
-Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`, Bookworm) — não precisou reinstalar. Câmera definida: webcam USB comum.
+Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não precisou reinstalar. Câmera definida: webcam USB comum. Python do sistema é **3.13.5** — codename do SO (Bookworm/Trixie/etc.) ainda não confirmado via `/etc/os-release`, mas 3.13 sugere algo mais novo que Bookworm (que vem com 3.11).
+
+> **Bloqueio aberto na Fase 4** (venv Python): `pip install -r vision/requirements.txt` não encontra versão de `mediapipe` compatível com Python 3.13. Ver [progresso.md](progresso.md) → "Em andamento" para o diagnóstico até aqui e o próximo passo definido.
 
 ### Fase 1 — Pacotes de sistema
 

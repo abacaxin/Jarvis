@@ -42,8 +42,12 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Decisão: deploy real é Raspberry Pi 3B local, não Railway** — Railway removido do painel, documentado só como histórico. Ver [visao-produto.md](visao-produto.md) e [deploy.md](deploy.md).
 - [x] **Hub WebSocket + luz do quarto (ESP32 + relé)**: `hub/server.js` (processo próprio) + `hub/interface/hubClient.js` (contrato pro Kevin) + firmware `hub/firmware/quarto_luz/quarto_luz.ino`. Comando explícito `/luz on`/`/luz off` em `index.js` — não é o LLM decidindo (mesmo motivo do `/foto`, ver decisoes.md). Protocolo validado ponta a ponta sem hardware real (`npm run hub:test`); firmware ainda não gravado/testado no ESP32 físico.
 
-- [x] **SO do Pi confirmado 64 bits** (`aarch64`, Bookworm) — não precisou reinstalar. Câmera decidida: webcam USB comum.
+- [x] **SO do Pi confirmado 64 bits** (`aarch64`) — não precisou reinstalar. Câmera decidida: webcam USB comum. **Correção:** o codename Bookworm citado antes nunca foi confirmado de fato (só `uname -m` foi rodado) — dado que o Pi tem **Python 3.13.5** e Bookworm vem com Python 3.11 por padrão, o SO provavelmente é mais novo (Trixie/Debian 13 ou similar). Confirmar com `cat /etc/os-release | grep VERSION_CODENAME` quando possível.
 - [x] **Guia de instalação completo pro Pi escrito** — [deploy.md](deploy.md), fases 1 a 9 (pacotes de sistema, Node, venv Python, .env, teste isolado de webcam/bluetooth/mic, ESP32, PM2 com `kevin`+`hub`, checklist final). `ecosystem.config.js` ganhou a app `hub` (antes só tinha `kevin`).
+
+## Em andamento
+
+- [ ] **Fase 4 do deploy.md travada: `pip install -r vision/requirements.txt` não encontra versão de `mediapipe`** compatível. Diagnosticado até aqui: Python 3.13.5, pip 26.2.1, `aarch64`. `vision/requirements.txt` fixa `mediapipe>=0.10,<0.11` — hipótese principal: MediaPipe pode já suportar Python 3.13/aarch64 em alguma versão fora desse intervalo (o cap `<0.11` foi escolhido antes de Python 3.13 entrar em cena), ou pode não existir wheel nenhuma pra essa combinação ainda. **Próximo passo definido, ainda não executado**: rodar `pip install mediapipe` (sem fixar versão) e colar a saída completa do erro — ela lista as versões disponíveis pra essa plataforma/Python, ou confirma que não existe nenhuma. Se não existir, a saída é instalar Python 3.11 (`pyenv` ou `deadsnakes`, a definir) só pro venv da visão, sem mexer no Python padrão do sistema.
 
 ## Pendente
 
