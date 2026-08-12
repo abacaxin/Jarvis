@@ -42,8 +42,12 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Decisão: deploy real é Raspberry Pi 3B local, não Railway** — Railway removido do painel, documentado só como histórico. Ver [visao-produto.md](visao-produto.md) e [deploy.md](deploy.md).
 - [x] **Hub WebSocket + luz do quarto (ESP32 + relé)**: `hub/server.js` (processo próprio) + `hub/interface/hubClient.js` (contrato pro Kevin) + firmware `hub/firmware/quarto_luz/quarto_luz.ino`. Comando explícito `/luz on`/`/luz off` em `index.js` — não é o LLM decidindo (mesmo motivo do `/foto`, ver decisoes.md). Protocolo validado ponta a ponta sem hardware real (`npm run hub:test`); firmware ainda não gravado/testado no ESP32 físico.
 
+- [x] **SO do Pi confirmado 64 bits** (`aarch64`, Bookworm) — não precisou reinstalar. Câmera decidida: webcam USB comum.
+- [x] **Guia de instalação completo pro Pi escrito** — [deploy.md](deploy.md), fases 1 a 9 (pacotes de sistema, Node, venv Python, .env, teste isolado de webcam/bluetooth/mic, ESP32, PM2 com `kevin`+`hub`, checklist final). `ecosystem.config.js` ganhou a app `hub` (antes só tinha `kevin`).
+
 ## Pendente
 
 - [ ] Múltiplos `chatId` compartilham os mesmos arquivos de memória (`profile.json`, `projects.json`...) — ok pra uso solo, vira bug se mais de uma pessoa usar o bot
 - [ ] Firmware do ESP32 (`hub/firmware/quarto_luz`) precisa ser gravado e testado em hardware real — só o servidor/cliente Node foram validados
-- [ ] Confirmar se o SO do Raspberry Pi é 64 bits (`uname -m` → `aarch64`) antes de considerar a migração pro Pi pronta — MediaPipe e onnxruntime (voz) têm suporte problemático em 32 bits (ver decisoes.md)
+- [ ] Guia do Pi ([deploy.md](deploy.md)) ainda não foi executado de ponta a ponta no hardware real — escrito com base no que já se sabia de cada subsistema, não validado no Pi 3B ainda
+- [ ] `voice/wake_listener.py` não está no `ecosystem.config.js` de propósito (ainda prototípico, sem Telegram) — decidir se entra como processo persistente depois de validar o resto
