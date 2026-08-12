@@ -1,33 +1,21 @@
-# Deploy 24/7 — Railway
+# Deploy — Raspberry Pi 3B (local)
 
-Conforme decidido no planejamento original: Railway free tier, deploy direto do GitHub, zero config. PM2 não é necessário no Railway — a plataforma já reinicia o processo sozinha em caso de crash. `ecosystem.config.js` é só para rodar local.
+**Atualização 2026-08-12:** o alvo real de deploy é um Raspberry Pi 3B local (quarto), não Railway. O Railway foi usado por um tempo como teste de deploy 24/7 e depois **removido** do painel — não está mais conectado a este repositório, não redeploya mais em `git push`. A seção abaixo fica só como histórico.
 
-## Pré-requisitos já prontos no repo
+## Deploy real: Raspberry Pi 3B
 
-- `package.json` tem `"start": "node index.js"` — Railway detecta Node automaticamente via Nixpacks, sem configuração extra
-- `.env.example` documenta as variáveis necessárias (`TOKEN`, `GROQ_API_KEY`)
-- `.gitignore` já exclui `.env` e os arquivos de memória pessoal
+Ainda não formalizado passo a passo (o Pi hospeda mais que o Kevin — é o hub central da casa, ver [visao-produto.md](visao-produto.md) e [hub/README.md](../hub/README.md)). O que já se sabe:
 
-## Passo a passo
+- **Confirmar arquitetura do SO antes de tudo**: `uname -m` no Pi — precisa ser `aarch64` (64 bits). Visão (MediaPipe) e wake word (onnxruntime) têm suporte problemático em `armv7l` (32 bits). Ver [decisoes.md](decisoes.md), seção "Risco de compatibilidade".
+- PM2 (`ecosystem.config.js`) continua fazendo sentido no Pi — ao contrário do Railway, aqui não existe plataforma cuidando de restart automático por fora.
+- O hub (`hub/server.js`) roda como processo separado do bot (`npm run hub:start`), os dois de pé ao mesmo tempo no Pi.
+- Vision (`vision/`) e voice (`voice/`) têm dependências Python (`pip install -r vision/requirements.txt`, `voice/requirements.txt`) que precisam ser instaladas no Pi — não vêm com `npm install`.
 
-1. **Criar o repositório no GitHub** (ainda não existe remote configurado neste projeto)
-   - Repositório privado é a opção recomendada, já que a memória local do bot tem dados pessoais (mesmo não indo pro git, é o mesmo projeto)
-2. **Push do código**
-   ```bash
-   git remote add origin <url-do-repo>
-   git push -u origin master
-   ```
-3. **No Railway** ([railway.app](https://railway.app)):
-   - New Project → Deploy from GitHub repo → selecionar o repositório
-   - Em Variables, adicionar `TOKEN` e `GROQ_API_KEY` (os mesmos valores do seu `.env` local)
-   - Railway builda e sobe sozinho a partir do `npm start`
-4. **Confirmar que subiu**: checar os logs no painel do Railway — deve aparecer a linha `INFO Kevin online.` do logger
+## Histórico: Railway (removido)
 
-## Depois do primeiro deploy
+Foi usado brevemente como deploy 24/7 de teste antes da decisão de ir para o Pi. Ficam registrados aqui os detalhes técnicos, caso o Railway volte a ser cogitado no futuro (ex: como fallback caso o Pi fique fora do ar):
 
-- Cada `git push` na branch conectada faz redeploy automático
-- Se o bot local (rodando via PM2) continuar ativo ao mesmo tempo que o do Railway, os dois vão tentar fazer `polling` no mesmo `TOKEN` do Telegram e vão brigar pelas mensagens — **parar o PM2 local** (`pm2 stop kevin`) antes de considerar o Railway a instância "oficial"
-
-## O que falta decidir antes desse passo
-
-Isso ainda depende de uma ação sua: criar o repositório no GitHub (ou me passar a URL de um que já exista) e criar a conta/projeto no Railway — login em serviço externo não é algo que o Kevin (o assistente, não o bot 😄) faz sozinho.
+- Free tier, deploy direto do GitHub, zero config — `package.json` já tem `"start": "node index.js"`, Railway detecta Node via Nixpacks sozinho.
+- Variáveis de ambiente (`TOKEN`, `GROQ_API_KEY`) via aba **Variables** no painel.
+- PM2 não é necessário lá — a plataforma reinicia o processo sozinha em crash.
+- **Cuidado se reativar**: se o bot local (PM2) ficar ativo ao mesmo tempo que uma instância no Railway, os dois brigam pelo `polling` do mesmo `TOKEN` do Telegram.

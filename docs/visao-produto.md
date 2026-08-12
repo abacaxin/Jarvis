@@ -24,7 +24,9 @@ Fase futura: uma câmera acoplada a um óculos, dando ao agente acesso à visão
 
 ## Deploy: Raspberry Pi 3B como servidor doméstico, não Railway
 
-**Atualização 2026-08-08:** decisão do usuário — Kevin não vai ficar 24/7 no Railway. Vai rodar local, num Raspberry Pi 3B no quarto, que serve de **hub central da casa**, não só host do Kevin. Railway continua documentado ([deploy.md](deploy.md)) como opção de fallback/referência, mas não é mais o alvo real.
+**Atualização 2026-08-08:** decisão do usuário — Kevin não vai ficar 24/7 no Railway. Vai rodar local, num Raspberry Pi 3B no quarto, que serve de **hub central da casa**, não só host do Kevin.
+
+**Atualização 2026-08-12:** serviço no Railway removido do painel. Não redeploya mais em `git push`. Fica só como histórico técnico em [deploy.md](deploy.md), caso volte a ser cogitado como fallback no futuro (ex: se o Pi ficar fora do ar).
 
 ## Hardware conectado ao Kevin (em planejamento, 2026-08-08)
 

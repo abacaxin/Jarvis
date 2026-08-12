@@ -28,7 +28,7 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 - [x] **Error handling estruturado + logs reais**: `services/logger.js` (timestamp + nível) substitui `console.log` solto. `index.js` ganhou handlers de `uncaughtException`/`unhandledRejection` (loga e sai — PM2 reinicia limpo em vez de estado indefinido). `memoryRouter.js` e `assistantBrain.js` não crasham mais se um arquivo de memória estiver com JSON corrompido — logam warning e resetam pro fallback.
 - [x] `conversations.json` também ganhou teto (500 entradas).
 
-- [x] **Deploy 24/7 (Railway)**: feito, repo em [github.com/abacaxin/Jarvis](https://github.com/abacaxin/Jarvis) conectado, push na `main` faz redeploy automático.
+- [x] **Deploy 24/7 (Railway)**: feito, repo em [github.com/abacaxin/Jarvis](https://github.com/abacaxin/Jarvis) conectado, push na `main` fazia redeploy automático. **Removido em 2026-08-12** — decisão de ir com Raspberry Pi 3B local como alvo real (ver linha abaixo). Serviço apagado no painel do Railway, não redeploya mais.
 - [x] **Bug pós-deploy: sessão perdia contexto entre mensagens no Railway** — `sessionHistory` (Map em RAM) zerava a cada restart do processo. Trocado por `loadHistory()`, que lê `conversations.json` do disco (ver [decisoes.md](decisoes.md)). `index.js` não mantém mais estado de sessão em memória.
 
 - [x] **Personalidade estilo Jarvis/Edith**: prompt reescrito com o tom escolhido pelo usuário (competente, direto, humor seco e ocasional). Ver [decisoes.md](decisoes.md).
@@ -39,7 +39,7 @@ Baseado no sprint definido em [planejamento-original.md](planejamento-original.m
 
 - [x] **Visão computacional (protótipo)**: webcam + MediaPipe, ativado por `/foto`/`/vision`, reconhece gesto, tira foto, descreve via Groq e injeta no `processMessage`. Feito pelo usuário fora desta sessão, merge de `feature/vision-voice-assistant`. Ver [vision/README.md](../vision/README.md).
 - [x] **Voz (protótipo, local, sem Telegram)**: wake word "Hey Jarvis", transcrição via Groq Whisper, resposta falada via Edge TTS, sessão contínua sem repetir a wake word. Feito pelo usuário fora desta sessão. Ver [voice em README.md](../README.md).
-- [x] **Decisão: deploy real é Raspberry Pi 3B local, não Railway** — Railway fica documentado como fallback. Ver [visao-produto.md](visao-produto.md).
+- [x] **Decisão: deploy real é Raspberry Pi 3B local, não Railway** — Railway removido do painel, documentado só como histórico. Ver [visao-produto.md](visao-produto.md) e [deploy.md](deploy.md).
 - [x] **Hub WebSocket + luz do quarto (ESP32 + relé)**: `hub/server.js` (processo próprio) + `hub/interface/hubClient.js` (contrato pro Kevin) + firmware `hub/firmware/quarto_luz/quarto_luz.ino`. Comando explícito `/luz on`/`/luz off` em `index.js` — não é o LLM decidindo (mesmo motivo do `/foto`, ver decisoes.md). Protocolo validado ponta a ponta sem hardware real (`npm run hub:test`); firmware ainda não gravado/testado no ESP32 físico.
 
 ## Pendente
