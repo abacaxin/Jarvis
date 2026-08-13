@@ -4,7 +4,7 @@
 
 ## Deploy real: Raspberry Pi 3B
 
-Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não precisou reinstalar. Câmera definida: webcam USB comum. Python do sistema é **3.13.5** — codename do SO (Bookworm/Trixie/etc.) ainda não confirmado via `/etc/os-release`, mas 3.13 sugere algo mais novo que Bookworm (que vem com 3.11).
+Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não precisou reinstalar. Câmera definida: webcam USB comum. Python do sistema é **3.13.5** — codename do SO provavelmente **Debian 13 (Trixie)**: Python 3.13 de sistema já sugeria isso, e bateu de novo quando `libatlas-base-dev` (Fase 1) não foi encontrado — esse pacote foi removido especificamente no Trixie. Ainda não confirmado via `cat /etc/os-release | grep VERSION_CODENAME` de forma definitiva, mas as duas evidências independentes convergem pro mesmo SO.
 
 > **Fase 4 (venv Python) passou por três bloqueios de dependência — dois resolvidos, um corrigido mas AINDA NÃO testado no Pi:**
 > 1. ~~`mediapipe` sem wheel pra Python 3.13~~ — primeira tentativa foi soltar o cap de versão pra pegar a `1.0.0` (única com wheel pra 3.13), mas essa versão **crasha ao rodar** no Cortex-A53 do Pi 3B: `FATAL ERROR: This binary was compiled with aes enabled, but this feature is not available on this processor`. O build da 1.0.0 passou a exigir a extensão de criptografia ARMv8 (AES) — o Cortex-A53 não tem, e isso é compilado no binário, não dá pra contornar com env var. **Fix de verdade**: o venv da visão usa Python 3.11 (via `pyenv`, Fase 4 abaixo) em vez do 3.13 do sistema, voltando pro `mediapipe` 0.10.x (que não tem esse requisito e já roda em Pi 3B segundo relatos de terceiros).
@@ -18,12 +18,12 @@ Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não preci
 sudo apt update && sudo apt full-upgrade -y
 
 sudo apt install -y git curl build-essential \
-  libatlas-base-dev libjpeg-dev libopenjp2-7 libtiff6 \
+  libopenblas-dev libjpeg-dev libopenjp2-7 libtiff6 \
   portaudio19-dev python3-venv python3-pip ffmpeg \
   bluez bluez-tools pulseaudio pulseaudio-module-bluetooth
 ```
 
-`libatlas`/`libjpeg`/etc. são exigências do opencv/numpy em ARM. `portaudio19-dev` é exigência de captura de áudio (voz). O grupo `bluez`/`pulseaudio` é pro alto-falante Bluetooth (Fase 6).
+`libopenblas-dev`/`libjpeg`/etc. são exigências do opencv/numpy em ARM — era `libatlas-base-dev`, mas esse pacote foi **removido no Debian 13 (Trixie)** (segunda evidência de que é esse o SO, ver nota no topo desta página). `libopenblas-dev` é o substituto recomendado. `portaudio19-dev` é exigência de captura de áudio (voz). O grupo `bluez`/`pulseaudio` é pro alto-falante Bluetooth (Fase 6).
 
 ### Fase 2 — Node.js
 
