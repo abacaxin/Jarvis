@@ -199,6 +199,111 @@ pm2 start ecosystem.config.js
 
 Confirma com `ls -la ~/kevin/venv/bin/python3` que o arquivo existe antes do passo 4, se quiser ter certeza antes de reiniciar.
 
+### Fase 10 — Music Assistant (Docker)
+
+Backend de música pro Kevin (ver [decisoes.md](decisoes.md) pra arquitetura completa — sidecar Python usando `music-assistant-client`, ainda não implementado do lado do Kevin, isso aqui é só a infra de base). Estado em 2026-08-13: em andamento, cartão SD do Pi é pequeno (14GB) e ficou sem espaço na primeira tentativa — documentado abaixo o caminho real, com o desvio pra armazenamento USB.
+
+**10.1 — Instalar Docker**
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+```
+
+Depois do `usermod`, sai e entra de novo no SSH (ou `newgrp docker`) — sem isso todo comando docker pede `sudo`.
+
+```bash
+docker --version
+```
+
+**10.2 — Espaço em disco: provavelmente vai faltar**
+
+Cartão SD pequeno (visto em produção: 14GB) não sobra espaço suficiente pra imagem do Music Assistant + a biblioteca dele, que só cresce. Sintoma: `docker run` falha com `failed to extract layer` (o download passa, a extração — que precisa de bem mais espaço temporário — não). Antes de tentar rodar o Music Assistant, limpa o que dá:
+
+```bash
+sudo apt clean
+sudo apt autoremove -y
+docker system prune -af
+sudo journalctl --vacuum-size=50M
+df -h /
+```
+
+Se sobrar menos de uns 3-4GB livre mesmo depois da limpeza, não adianta insistir — precisa de armazenamento externo (próximo passo). Visto em produção: 1GB livre num cartão de 14GB mesmo depois da limpeza — foi necessário mover o Docker pra um pendrive/HD USB.
+
+**10.3 — Mover o Docker pra armazenamento USB** (só se a Fase 10.2 confirmou que falta espaço)
+
+Pluga o pendrive/HD e identifica ele — na Raspberry Pi o cartão SD é `mmcblk0`, dispositivos USB aparecem como `sda`, `sdb` etc.:
+
+```bash
+lsblk
+```
+
+**Confirma o nome certo antes de continuar** — o próximo passo é destrutivo (apaga tudo no dispositivo). Se tiver dúvida, para aqui e confirma o nome antes de formatar.
+
+Se a partição aparecer já montada (erro `mkfs` reclamando disso), desmonta primeiro:
+
+```bash
+sudo umount /dev/sda1
+```
+
+Formata (ajusta `/dev/sda1` pro nome real — se o pendrive não tiver partição nenhuma ainda, pode ser `/dev/sda` direto, sem o `1`):
+
+```bash
+sudo mkfs.ext4 /dev/sda1
+```
+
+Monta e deixa persistente entre reboots:
+
+```bash
+sudo mkdir -p /mnt/usbstorage
+sudo mount /dev/sda1 /mnt/usbstorage
+sudo blkid /dev/sda1
+```
+
+Pega o `UUID=...` que o `blkid` mostrou e adiciona no `/etc/fstab`:
+
+```bash
+echo "UUID=<uuid-aqui>  /mnt/usbstorage  ext4  defaults  0  2" | sudo tee -a /etc/fstab
+```
+
+Aponta o Docker pra esse mount:
+
+```bash
+sudo systemctl stop docker
+sudo mkdir -p /mnt/usbstorage/docker
+echo '{"data-root": "/mnt/usbstorage/docker"}' | sudo tee /etc/docker/daemon.json
+sudo systemctl start docker
+docker info | grep "Docker Root Dir"
+```
+
+Confirma que a última linha mostra `/mnt/usbstorage/docker` antes de seguir.
+
+**10.4 — Subir o Music Assistant**
+
+```bash
+docker run -d --name music-assistant --network=host --restart=unless-stopped -v music-assistant-data:/data ghcr.io/music-assistant/server
+```
+
+Numa linha só, de propósito — `\` de continuação de linha quebrou numa tentativa anterior (bash executou cada linha como comando separado). Se tiver sobrado um container de tentativa anterior:
+
+```bash
+docker rm -f music-assistant
+```
+
+Acompanha o download/start:
+
+```bash
+docker ps
+docker logs -f music-assistant
+```
+
+**10.5 — Configuração inicial**
+
+1. Abre `http://<ip-do-pi>:8095` no navegador
+2. Configura as fontes de música (Spotify, biblioteca local, etc.)
+3. **Settings → Profile** → gera o token de longa duração (10 anos) — vai pro `.env` do Kevin quando a integração for implementada
+4. Instala o **Squeezelite** no PC (decisão já tomada — ver decisoes.md) pra ele virar um player reconhecido pelo Music Assistant: [github.com/ralph-irving/squeezelite](https://github.com/ralph-irving/squeezelite) releases, roda como `squeezelite.exe -n "PC do Dan" -s <ip-do-pi>`
+
 ## Histórico: Railway (removido)
 
 Foi usado brevemente como deploy 24/7 de teste antes da decisão de ir para o Pi. Ficam registrados aqui os detalhes técnicos, caso o Railway volte a ser cogitado no futuro (ex: como fallback caso o Pi fique fora do ar):

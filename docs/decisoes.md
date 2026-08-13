@@ -218,3 +218,21 @@ Testado direto contra `processMessage` (add → listar → complete → listar d
 **Fix:** `classifyIntent(texto, history)` agora aceita o mesmo formato `{role, content}[]` que o brain usa, e `index.js` carrega os últimos 10 turnos via `loadHistory()` (memoryRouter, mesma função que `assistantBrain.js` já usa) antes de classificar. Prompt atualizado pra explicitamente instruir resolver alvo/verbo espalhado entre turnos, mantendo a mesma cautela de antes (só sai de "chat" se a intenção ficar clara mesmo considerando o histórico).
 
 **Validado:** três casos — "desligue" sozinho (sem histórico) continua `chat`; "a luz" com o histórico do cenário real resolve `light_off`; variação com conversa irrelevante antes do "desligue" também resolve certo (não se confunde com contexto solto).
+
+## Música: sidecar Python (não WebSocket direto em Node), Squeezelite pro PC
+
+**Contexto:** planejamento de um módulo de música pro Kevin usando [Music Assistant](https://www.music-assistant.io/) como backend de biblioteca/reprodução, em vez de construir player/biblioteca do zero. Pesquisado o estado atual do projeto (2026-08-13) antes de decidir qualquer coisa — resumo:
+
+- Roda standalone (não depende de Home Assistant), expõe API própria via WebSocket + REST, com docs OpenAPI oficiais desde ~out/2025 (`/api-docs` na própria instância)
+- **API passou a exigir autenticação** (token bearer) nas versões recentes — não é mais aberta na rede local como era antes
+- Suporta múltiplas fontes (Spotify, Tidal, YouTube Music, biblioteca local...) e múltiplos players (Sonos, Chromecast, AirPlay, DLNA, Snapcast, Squeezelite...) nativamente
+
+**Decisão 1 — como o Kevin fala com o MA:** sidecar Python (`music/engine.py`, mesmo padrão de `vision/`/`voice/`) usando o client oficial `music-assistant-client` (PyPI, assíncrono, tipado — é o mesmo client que o próprio Home Assistant usa por baixo), em vez de implementar um client WebSocket/JSON-RPC do zero em Node.
+
+**Por quê:** não existe client JS/TS oficial publicado (só o TypeScript embutido no frontend Vue do próprio MA, que precisaria ser lido/portado na mão). A API do MA está mudando rápido — o modelo de autenticação inteiro mudou em out/2025 — e o client Python oficial absorve esse risco de manutenção. Trade-off aceito: mais um processo Python no Pi, que já andou apertado essa semana com mediapipe/venv.
+
+**Decisão 2 — "toca no meu PC":** o modelo de player do MA é por protocolo específico (plugin Python dentro do próprio servidor MA) — não existe um jeito genérico de "qualquer processo Node se registrar como player". Em vez de escrever um Player Provider customizado (plugin pesado), o PC roda **Squeezelite** (cliente leve, suporte nativo maduro no MA) — o Kevin não precisa construir nada pra isso, é configuração de player, não código.
+
+**Bloqueio real encontrado na infra (não no design):** cartão SD do Pi (14GB) ficou sem espaço extraindo a imagem Docker do Music Assistant, mesmo depois de limpeza (`apt clean`, `docker system prune`, `journalctl --vacuum-size`) — sobrou ~1GB livre. Solução: mover o data-root do Docker pra um pendrive/HD USB externo (`/etc/docker/daemon.json` → `data-root`), documentado com o resto da infra em [deploy.md](deploy.md) Fase 10.
+
+**MVP definido (ainda não implementado):** buscar+tocar (música/artista), pausar/retomar, próxima/anterior, volume — alvo único (player do PC via Squeezelite), sem seleção de dispositivo por linguagem natural, sem shuffle/repeat/seek ainda. Precisa de um classificador de intenção próprio pra música (schema mais rico que `light_on`/`light_off` — carrega `action` + `query` + `query_type` opcional, não é só um enum).
