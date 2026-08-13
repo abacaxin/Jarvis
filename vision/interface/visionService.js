@@ -80,6 +80,25 @@ function ensureEngineProcess() {
       pendingCapture = null;
     }
 
+    // Feedback textual do que o engine esta vendo, pra debugar gesto sem
+    // precisar da janela --show (que exige ambiente grafico, nao existe
+    // num Pi headless). Acompanhar com `pm2 logs kevin`.
+    if (event.type === 'vision.hand.detected') {
+      logger.info('[vision] mão detectada');
+    }
+
+    if (event.type === 'vision.hand.lost') {
+      logger.info('[vision] mão perdida');
+    }
+
+    if (event.type === 'vision.gesture.recognized') {
+      logger.info(`[vision] gesto reconhecido: ${event.payload.gesture}`);
+    }
+
+    if (event.type === 'vision.protocol.triggered') {
+      logger.info(`[vision] protocolo disparado: ${event.payload.protocol}`);
+    }
+
     service.emit(event.type, event.payload);
   });
 
