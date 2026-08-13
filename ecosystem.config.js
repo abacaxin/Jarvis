@@ -4,14 +4,14 @@ module.exports = {
       name: 'kevin',
       script: 'index.js',
       autorestart: true,
-      watch: false
+      watch: false,
 
-      // Se a visao usar um venv Python (recomendado no Pi), descomente
-      // e ajuste o caminho — sem isso, spawn() usa o "python3" que
-      // estiver no PATH do PM2, que pode nao ser o do venv:
-      // env: {
-      //   VISION_PYTHON_BIN: '/home/pi/kevin/venv/bin/python3'
-      // }
+      // Sem isso, spawn() usa o "python3" que estiver no PATH do PM2 —
+      // que e o do sistema, sem mediapipe (instalado só no venv). Ajuste
+      // o caminho se o seu venv nao estiver em <repo>/venv.
+      env: {
+        VISION_PYTHON_BIN: '/home/softh/kevin/venv/bin/python3'
+      }
     },
     {
       name: 'hub',
