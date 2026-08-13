@@ -172,6 +172,19 @@ async function handleVisionCommand(chatId) {
 
     await bot.sendMessage(chatId, '🖼️ Foto capturada, analisando...');
 
+    // TEMPORARIO: manda a foto de volta so pra confirmar visualmente que
+    // a captura esta funcionando de verdade, enquanto isso ainda nao
+    // esta validado no Pi. Nao trava o fluxo se falhar (arquivo pode ja
+    // ter sido limpo, etc).
+    try {
+
+      await bot.sendPhoto(chatId, result.path);
+
+    } catch (erro) {
+
+      logger.warn('Falha ao enviar foto de debug', erro.message);
+    }
+
     let descricao;
 
     try {
