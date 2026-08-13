@@ -40,7 +40,7 @@ const groq = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-async function classifyIntent(texto) {
+async function classifyIntent(texto, history = []) {
 
   const response = await groq.chat.completions.create({
 
@@ -51,7 +51,7 @@ async function classifyIntent(texto) {
       {
         role: 'system',
 
-        content: `Classifique a intenção da mensagem do usuário em uma destas categorias:
+        content: `Classifique a intenção da ÚLTIMA mensagem do usuário (a mais recente, no fim da conversa) em uma destas categorias:
 
 - "vision_capture": pede pra tirar uma foto agora mesmo, sem gesto (ex: "capture isso", "tira uma foto", "bate uma foto agora", "fotografa isso aqui")
 - "vision_activate": pede pra ativar a visão/câmera pra esperar um gesto depois (ex: "ativa a visão", "liga a câmera", "quero usar a visão")
@@ -60,8 +60,13 @@ async function classifyIntent(texto) {
 - "light_off": pede claramente pra apagar/desligar a luz do quarto (ex: "apaga a luz", "desliga a luz", "pode apagar a luz")
 - "chat": qualquer outra coisa — conversa normal, pergunta, comando não relacionado a visão ou luz
 
-Na dúvida entre qualquer uma dessas categorias e chat, prefira "chat" — só classifica fora de "chat" se a intenção for clara e inequívoca. Isso vale especialmente pra light_on/light_off: são ações físicas reais, não classifique por suposição (ex: "tá escuro" sozinho, sem pedido explícito, NÃO é light_on).`
+Use o histórico da conversa (se houver) pra resolver respostas curtas de acompanhamento. Exemplo: usuário diz "desligue" (ambíguo sozinho, sem alvo — classificaria "chat"), você (papel assistant) responde "o quê?", usuário responde só "a luz" — nesse ponto, junto com o "desligue" de duas mensagens atrás, a intenção fica clara: "light_off". Não exija que a mensagem mais recente sozinha contenha o verbo — o pedido pode estar espalhado em mais de uma mensagem.
+
+Mesmo assim, só classifique fora de "chat" se a intenção juntando o histórico for clara e inequívoca — isso vale especialmente pra light_on/light_off: são ações físicas reais, não classifique por suposição (ex: "tá escuro" sozinho, sem pedido explícito em nenhum ponto da conversa, NÃO é light_on).`
       },
+
+      ...history,
+
       {
         role: 'user',
         content: texto

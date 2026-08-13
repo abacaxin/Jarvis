@@ -10,6 +10,7 @@ const visionService = require('./vision/interface/visionService');
 const { describeImage } = require('./services/visionAnalyzer');
 const { sendCommand: sendHubCommand } = require('./hub/interface/hubClient');
 const { classifyIntent } = require('./services/intentRouter');
+const { loadHistory } = require('./services/memoryRouter');
 
 const token = process.env.TOKEN;
 
@@ -65,6 +66,11 @@ const MEMORY_FILES = {
   conversationsFile: './memory/conversations.json',
   todosFile: './memory/todos.json'
 };
+
+// mesma janela usada pelo brain (core/assistantBrain.js) — o classificador
+// de intencao precisa ver os ultimos turnos pra resolver respostas curtas
+// de acompanhamento ("desligue" -> "o que?" -> "a luz" = light_off).
+const INTENT_HISTORY_TURNS = 10;
 
 function startTypingLoop(chatId) {
 
@@ -328,12 +334,19 @@ bot.on('message', async (msg) => {
   // extra e rapida (gpt-oss-20b) antes do fluxo normal de chat. Continua
   // sendo o classificador decidindo, nao o brain estrito — mesmo
   // principio de manter acao com efeito fisico fora do RESPONSE_SCHEMA
-  // (ver docs/decisoes.md).
+  // (ver docs/decisoes.md). Recebe o historico de conversa pra resolver
+  // resposta curta de acompanhamento (ex: "desligue" -> "o que?" -> "a
+  // luz" — nenhuma das duas sozinha diz "light_off", juntas dizem).
   let intent;
 
   try {
 
-    intent = await classifyIntent(texto);
+    const intentHistory = loadHistory(
+      MEMORY_FILES.conversationsFile,
+      INTENT_HISTORY_TURNS
+    );
+
+    intent = await classifyIntent(texto, intentHistory);
 
   } catch (erro) {
 
