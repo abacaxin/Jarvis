@@ -1,4 +1,16 @@
 # mediapipe ja traz opencv-contrib-python como dependencia (fornece o
 # mesmo modulo cv2) — nao pinar opencv-python separado pra nao instalar
 # os dois pacotes de OpenCV juntos (conflitam, especialmente no Windows).
-mediapipe>=0.10,<0.11
+#
+# Teto "<0.11" removido: bloqueava a instalacao no Raspberry Pi (Python
+# 3.13, aarch64) porque nao existe NENHUM wheel 0.10.x pra Python 3.13
+# (confirmado: nem mesmo tentando build from source, ver
+# google-ai-edge/mediapipe#6159) — o cap foi escolhido antes do Python
+# 3.13 existir. A 1.0.0 (mais recente que o cap) resolve isso: mudou de
+# wheels por versao do Python (cp310/cp311/cp312) pra wheels "py3-none"
+# (independentes de versao do CPython), incluindo linux aarch64 — deve
+# instalar em qualquer Python 3.x, 3.13 incluido. Ainda NAO testado se a
+# API usada em detection/hand_detector.py (Tasks API, HandLandmarker)
+# segue identica no salto 0.10->1.0 — testar deteccao de verdade depois
+# de instalar, nao só confiar que o pip install funcionou.
+mediapipe>=1.0.0
