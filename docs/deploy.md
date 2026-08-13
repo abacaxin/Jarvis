@@ -27,12 +27,12 @@ sudo apt install -y git curl build-essential \
 
 ### Fase 2 — Node.js
 
-Pi OS de 64 bits = arquitetura ARM64, o instalador oficial da NodeSource cobre isso:
+Pi OS de 64 bits = arquitetura ARM64, o instalador oficial da NodeSource cobre isso. Usa a 22.x (LTS atual), não a 20.x — a 20 saiu de LTS em abril/2026 e já está sem patch de segurança; o Pi vai rodar um servidor WebSocket (`hub/server.js`) exposto pra dispositivos ESP32 na rede, não faz sentido isso rodar em runtime sem manutenção. Confirmado: NodeSource tem pacote pra Debian 13/Trixie na 22.x (instalação real reportada, `node -v` → v22.22.x).
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
-node -v   # confirma v20.x
+node -v   # confirma v22.x
 ```
 
 ### Fase 3 — Clonar o repo e instalar dependências Node
