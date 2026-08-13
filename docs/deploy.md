@@ -49,7 +49,7 @@ sudo npm install -g pm2
 O Python 3.13 do sistema não roda `mediapipe` neste Pi de forma alguma (ver blockquote acima) — o venv usa Python 3.11 via [`pyenv`](https://github.com/pyenv/pyenv) em vez do `python3` do sistema. `deadsnakes` (PPA mais comum pra isso) foi descartado por só cobrir Ubuntu — Raspberry Pi OS é Debian.
 
 ```bash
-sudo apt install -y build-essential libssl-dev zlib1g-dev   libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev
+sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev
 
 curl https://pyenv.run | bash
 export PATH="$HOME/.pyenv/bin:$PATH"
