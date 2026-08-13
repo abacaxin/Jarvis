@@ -7,7 +7,14 @@ const OpenAI = require('openai');
 // mensagem vai pro brain normal ou aciona a visao direto.
 const MODEL = 'openai/gpt-oss-20b';
 
-const INTENTS = ['chat', 'vision_activate', 'vision_capture', 'end_session'];
+const INTENTS = [
+  'chat',
+  'vision_activate',
+  'vision_capture',
+  'end_session',
+  'light_on',
+  'light_off'
+];
 
 const INTENT_SCHEMA = {
   type: 'json_schema',
@@ -49,9 +56,11 @@ async function classifyIntent(texto) {
 - "vision_capture": pede pra tirar uma foto agora mesmo, sem gesto (ex: "capture isso", "tira uma foto", "bate uma foto agora", "fotografa isso aqui")
 - "vision_activate": pede pra ativar a visão/câmera pra esperar um gesto depois (ex: "ativa a visão", "liga a câmera", "quero usar a visão")
 - "end_session": pede claramente pra encerrar a conversa (ex: "obrigado, é só isso", "pode encerrar", "tchau Kevin", "já terminei", "só isso por hoje")
-- "chat": qualquer outra coisa — conversa normal, pergunta, comando não relacionado a visão
+- "light_on": pede claramente pra acender/ligar a luz do quarto (ex: "acende a luz", "liga a luz", "tá escuro aqui, liga a luz", "acende aí")
+- "light_off": pede claramente pra apagar/desligar a luz do quarto (ex: "apaga a luz", "desliga a luz", "pode apagar a luz")
+- "chat": qualquer outra coisa — conversa normal, pergunta, comando não relacionado a visão ou luz
 
-Na dúvida entre vision_capture/vision_activate/end_session e chat, prefira "chat" — só classifica fora de "chat" se a intenção for clara e inequívoca.`
+Na dúvida entre qualquer uma dessas categorias e chat, prefira "chat" — só classifica fora de "chat" se a intenção for clara e inequívoca. Isso vale especialmente pra light_on/light_off: são ações físicas reais, não classifique por suposição (ex: "tá escuro" sozinho, sem pedido explícito, NÃO é light_on).`
       },
       {
         role: 'user',

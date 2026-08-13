@@ -9,6 +9,7 @@ require('./core/assistantBrain');
 const visionService = require('./vision/interface/visionService');
 const { describeImage } = require('./services/visionAnalyzer');
 const { sendCommand: sendHubCommand } = require('./hub/interface/hubClient');
+const { classifyIntent } = require('./services/intentRouter');
 
 const token = process.env.TOKEN;
 
@@ -263,6 +264,29 @@ async function handleStopVisionCommand(chatId) {
   await bot.sendMessage(chatId, 'Visão desativada.');
 }
 
+// LUZ
+// Usado tanto pelo comando explicito (/luz on|off) quanto pela intencao
+// reconhecida por linguagem natural (classifyIntent) — mesma acao fisica
+// real, so muda como o usuario pediu.
+async function executeLightCommand(chatId, acao) {
+
+  try {
+
+    await sendHubCommand('quarto_luz', acao);
+
+    await bot.sendMessage(
+      chatId,
+      acao === 'on' ? 'Luz ligada.' : 'Luz apagada.'
+    );
+
+  } catch (erro) {
+
+    logger.error('Erro no comando de luz', erro);
+
+    await bot.sendMessage(chatId, `Não consegui: ${erro.message}`);
+  }
+}
+
 bot.on('message', async (msg) => {
 
   const chatId = msg.chat.id;
@@ -292,30 +316,34 @@ bot.on('message', async (msg) => {
     return handleStopVisionCommand(chatId);
   }
 
-  // LUZ
-  // Comando explicito, nao decisao do LLM — acao com efeito fisico real,
-  // sem camada de permissao/confirmacao ainda (ver docs/visao-produto.md).
+  // LUZ — comando explicito, sem custo de chamada extra
   if (texto === '/luz on' || texto === '/luz off') {
 
-    const acao = texto.endsWith('on') ? 'on' : 'off';
+    return executeLightCommand(chatId, texto.endsWith('on') ? 'on' : 'off');
+  }
 
-    try {
+  // LUZ — reconhecimento por linguagem natural, via intentRouter (mesma
+  // classificacao usada no fluxo de voz). Roda pra toda mensagem que nao
+  // bateu em nenhum comando explicito acima — custa uma chamada Groq
+  // extra e rapida (gpt-oss-20b) antes do fluxo normal de chat. Continua
+  // sendo o classificador decidindo, nao o brain estrito — mesmo
+  // principio de manter acao com efeito fisico fora do RESPONSE_SCHEMA
+  // (ver docs/decisoes.md).
+  let intent;
 
-      await sendHubCommand('quarto_luz', acao);
+  try {
 
-      await bot.sendMessage(
-        chatId,
-        acao === 'on' ? 'Luz ligada.' : 'Luz apagada.'
-      );
+    intent = await classifyIntent(texto);
 
-    } catch (erro) {
+  } catch (erro) {
 
-      logger.error('Erro no comando de luz', erro);
+    logger.warn('Falha ao classificar intencao, seguindo pro chat normal', erro.message);
+    intent = 'chat';
+  }
 
-      await bot.sendMessage(chatId, `Não consegui: ${erro.message}`);
-    }
+  if (intent === 'light_on' || intent === 'light_off') {
 
-    return;
+    return executeLightCommand(chatId, intent === 'light_on' ? 'on' : 'off');
   }
 
   let typingLoop;
