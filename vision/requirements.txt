@@ -2,15 +2,19 @@
 # mesmo modulo cv2) — nao pinar opencv-python separado pra nao instalar
 # os dois pacotes de OpenCV juntos (conflitam, especialmente no Windows).
 #
-# Teto "<0.11" removido: bloqueava a instalacao no Raspberry Pi (Python
-# 3.13, aarch64) porque nao existe NENHUM wheel 0.10.x pra Python 3.13
-# (confirmado: nem mesmo tentando build from source, ver
-# google-ai-edge/mediapipe#6159) — o cap foi escolhido antes do Python
-# 3.13 existir. A 1.0.0 (mais recente que o cap) resolve isso: mudou de
-# wheels por versao do Python (cp310/cp311/cp312) pra wheels "py3-none"
-# (independentes de versao do CPython), incluindo linux aarch64 — deve
-# instalar em qualquer Python 3.x, 3.13 incluido. Ainda NAO testado se a
-# API usada em detection/hand_detector.py (Tasks API, HandLandmarker)
-# segue identica no salto 0.10->1.0 — testar deteccao de verdade depois
-# de instalar, nao só confiar que o pip install funcionou.
-mediapipe>=1.0.0
+# Historico do cap "<0.11" (nao mexer sem ler isso primeiro):
+# 1) Python 3.13 do sistema no Pi nao tem NENHUM wheel 0.10.x — tentamos
+#    soltar o cap pra pegar a 1.0.0 (unica versao com wheel pra 3.13).
+# 2) A 1.0.0 aarch64 instala, mas CRASHA na hora de rodar: "This binary
+#    was compiled with aes enabled, but this feature is not available
+#    on this processor" (SIGILL) — o build deles passou a exigir a
+#    extensao de criptografia ARMv8 (AES), que o Cortex-A53 do Pi 3B
+#    nao tem (compilado assim, nao tem flag/env var que resolva).
+# 3) Fix de verdade: NAO perseguir a 1.0.0. Volta pro cap "<0.11"
+#    (0.10.18, ultima da linha 0.10.x, tem wheel aarch64 confirmado pra
+#    cp310/cp311/cp312) e usa Python 3.11 SO no venv da visao em vez do
+#    3.13 do sistema (ver docs/deploy.md, Fase 4 — pyenv). Python 3.13
+#    fica pro resto do projeto (Node nao e afetado por nada disso).
+# Ainda NAO testado no Pi se 0.10.18 realmente evita o crash de AES —
+# proximo passo concreto, nao dar como resolvido so por instalar limpo.
+mediapipe>=0.10,<0.11

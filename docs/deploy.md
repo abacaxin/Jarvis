@@ -6,11 +6,11 @@
 
 Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não precisou reinstalar. Câmera definida: webcam USB comum. Python do sistema é **3.13.5** — codename do SO (Bookworm/Trixie/etc.) ainda não confirmado via `/etc/os-release`, mas 3.13 sugere algo mais novo que Bookworm (que vem com 3.11).
 
-> **Fase 4 (venv Python) teve dois bloqueios de dependência, ambos com fix já commitado mas AINDA NÃO confirmado rodando de ponta a ponta no Pi:**
-> 1. `mediapipe` não tinha wheel pra Python 3.13 no cap de versão antigo (`<0.11`) — corrigido soltando o cap (`>=1.0.0`).
-> 2. `openwakeword` exige `tflite-runtime` no Linux, que também não tem wheel pra Python 3.13 (projeto parado no PyPI) — só que esse a gente nem usa de verdade (sempre roda em modo ONNX). Corrigido instalando `openwakeword` com `--no-deps` (ver comando abaixo e comentário em `voice/requirements.txt`).
+> **Fase 4 (venv Python) passou por três bloqueios de dependência — dois resolvidos, um corrigido mas AINDA NÃO testado no Pi:**
+> 1. ~~`mediapipe` sem wheel pra Python 3.13~~ — primeira tentativa foi soltar o cap de versão pra pegar a `1.0.0` (única com wheel pra 3.13), mas essa versão **crasha ao rodar** no Cortex-A53 do Pi 3B: `FATAL ERROR: This binary was compiled with aes enabled, but this feature is not available on this processor`. O build da 1.0.0 passou a exigir a extensão de criptografia ARMv8 (AES) — o Cortex-A53 não tem, e isso é compilado no binário, não dá pra contornar com env var. **Fix de verdade**: o venv da visão usa Python 3.11 (via `pyenv`, Fase 4 abaixo) em vez do 3.13 do sistema, voltando pro `mediapipe` 0.10.x (que não tem esse requisito e já roda em Pi 3B segundo relatos de terceiros).
+> 2. **Resolvido**: `openwakeword` exige `tflite-runtime` no Linux, que também não tem wheel pra Python 3.13/3.11 recente — só que esse a gente nem usa de verdade (sempre roda em modo ONNX, nunca importa tflite_runtime — confirmado lendo o source). Corrigido instalando `openwakeword` com `--no-deps` (ver comando abaixo e comentário em `voice/requirements.txt`).
 >
-> Ver [progresso.md](progresso.md) → "Em andamento" pro diagnóstico completo de cada um.
+> Ver [progresso.md](progresso.md) → "Em andamento" pro diagnóstico completo. **Item 1 (Python 3.11 + mediapipe 0.10.x) ainda não confirmado rodando no Pi de verdade.**
 
 ### Fase 1 — Pacotes de sistema
 
@@ -46,8 +46,22 @@ sudo npm install -g pm2
 
 ### Fase 4 — Ambiente Python (venv)
 
+O Python 3.13 do sistema não roda `mediapipe` neste Pi de forma alguma (ver blockquote acima) — o venv usa Python 3.11 via [`pyenv`](https://github.com/pyenv/pyenv) em vez do `python3` do sistema. `deadsnakes` (PPA mais comum pra isso) foi descartado por só cobrir Ubuntu — Raspberry Pi OS é Debian.
+
 ```bash
-python3 -m venv venv
+sudo apt install -y build-essential libssl-dev zlib1g-dev   libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev
+
+curl https://pyenv.run | bash
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+
+# compila o Python do zero — num Pi 3B isso é lento (CPU fraca), espera
+# de 20 a 60 minutos na primeira vez, sem jeito de acelerar
+pyenv install 3.11
+```
+
+```bash
+~/.pyenv/versions/3.11*/bin/python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r vision/requirements.txt
