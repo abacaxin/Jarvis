@@ -149,6 +149,56 @@ pm2 startup   # segue a instrucao que ele imprime (comando com sudo pra rodar um
 - [ ] `/luz on` / `/luz off` aciona o relé de verdade
 - [ ] Áudio de teste toca na caixa Bluetooth (`paplay <algum .wav>` ou via `voice/speak_server.py`)
 
+## Troubleshooting: `ENOENT` no `VISION_PYTHON_BIN` / venv nunca foi criado
+
+Sintoma no `pm2 logs kevin`: `[vision-engine] Falha ao iniciar processo Python spawn /home/.../kevin/venv/bin/python3 ENOENT`. Significa que o caminho configurado em `VISION_PYTHON_BIN` (`ecosystem.config.js`) não existe — o venv da Fase 4 nunca chegou a ser criado (aconteceu em 2026-08-13: a causa raiz do `mediapipe` tinha sido diagnosticada, mas os comandos da Fase 4 nunca foram executados de fato no Pi).
+
+**1. Checa se `pyenv` + Python 3.11 já existem**, pra não recompilar à toa:
+
+```bash
+pyenv --version
+pyenv versions
+```
+
+Se aparecer `pyenv` instalado e uma versão `3.11.x` na lista, pula pro passo 3. Senão, passo 2.
+
+**2. Instala `pyenv` + Python 3.11** (só se o passo 1 não achou nada):
+
+```bash
+sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev
+
+curl https://pyenv.run | bash
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+
+pyenv install 3.11
+```
+
+Compila o Python do zero — **20 a 60 minutos numa Pi 3B**, sem como acelerar. Pode deixar rodando em segundo plano.
+
+**3. Cria o venv e instala as dependências** (Fase 4 completa):
+
+```bash
+cd ~/kevin
+~/.pyenv/versions/3.11*/bin/python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r vision/requirements.txt
+pip install --no-deps "openwakeword>=0.6,<1"
+pip install -r voice/requirements.txt
+python vision/detection/download_model.py
+deactivate
+```
+
+**4. Reinicia o Kevin pra ele pegar o venv:**
+
+```bash
+pm2 delete kevin
+pm2 start ecosystem.config.js
+```
+
+Confirma com `ls -la ~/kevin/venv/bin/python3` que o arquivo existe antes do passo 4, se quiser ter certeza antes de reiniciar.
+
 ## Histórico: Railway (removido)
 
 Foi usado brevemente como deploy 24/7 de teste antes da decisão de ir para o Pi. Ficam registrados aqui os detalhes técnicos, caso o Railway volte a ser cogitado no futuro (ex: como fallback caso o Pi fique fora do ar):
