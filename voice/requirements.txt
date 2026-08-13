@@ -14,7 +14,27 @@ pygame>=2.5
 # Wake word ("Hey Jarvis" pre-treinado por padrao): openWakeWord, roda
 # local, sem conta nem chave de API — Porcupine foi tentado primeiro,
 # mas exige cadastro que travou pro usuario (ver docs/decisoes.md).
-openwakeword>=0.6,<1
+#
+# openwakeword NAO esta listado aqui de proposito — ver instrucoes de
+# instalacao em docs/deploy.md (Fase 4). Ele declara `tflite-runtime`
+# como dependencia obrigatoria no Linux, mas esse pacote nao tem wheel
+# pra Python 3.13 em NENHUMA plataforma (projeto parado no PyPI, ultima
+# versao so vai ate Python 3.11) — e nosso codigo nunca usa esse
+# caminho mesmo (wake_listener.py sempre pede inference_framework=
+# "onnx"; o import de tflite_runtime dentro do openwakeword so roda se
+# voce pedir inference_framework="tflite", confirmado lendo o source).
+# Por isso openwakeword precisa ser instalado com --no-deps (pulando
+# tflite-runtime que nunca vai ser importado) — os deps de verdade que
+# ele usa (onnxruntime, scipy, tqdm, requests) estao explicitos abaixo.
+# scikit-learn tambem fica de fora: e importado incondicionalmente por
+# openwakeword/custom_verifier_model.py so pra treinar um "verificador
+# customizado" que este projeto nunca usa — wake_listener.py ja
+# substitui esse import por um stub falso via sys.modules antes de
+# `import openwakeword`, entao nem precisa estar instalado de verdade.
+onnxruntime>=1.10,<2
+scipy>=1.3,<2
+tqdm>=4,<5
+requests>=2,<3
 
 # Supressao de ruido no audio gravado, antes de mandar pro Whisper.
 # NAO instalar o extra [pytorch] — a versao default (numpy/scipy, spectral
