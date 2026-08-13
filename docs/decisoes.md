@@ -210,3 +210,11 @@ Testado direto contra `processMessage` (add → listar → complete → listar d
 **Custo aceito:** toda mensagem de chat normal agora paga uma chamada Groq extra (classificação, `gpt-oss-20b`, rápida) antes de decidir se vai pro brain — mesmo trade-off que a voz já tinha. Se isso incomodar em latência/custo no dia a dia, a alternativa é restringir a classificação a mensagens curtas ou com palavras-gatilho (`luz`, `acende`, `apaga`) antes de gastar a chamada, mas não foi necessário até aqui.
 
 **Validado antes de commitar:** 8 casos de teste direto contra `classifyIntent()` (4 comandos explícitos de luz, "tá escuro aqui" como armadilha de falso positivo, e 3 mensagens de chat comuns) — todos classificaram certo, incluindo "tá escuro aqui" ficando como `chat` (o prompt instrui explicitamente a não inferir `light_on` de afirmação de humor/ambiente sem pedido explícito).
+
+## `classifyIntent()` ganhou histórico de conversa (mesmo dia, gap reportado em uso real)
+
+**Problema:** usuário disse "desligue" (corretamente ambíguo sozinho, sem alvo — cai pra `chat`, Kevin pergunta "o quê?"), respondeu "a luz" — mas essa resposta avaliada isolada também é ambígua (sem verbo nenhum), então continuava caindo pra `chat` em vez de resolver como `light_off`, mesmo as duas mensagens juntas deixando a intenção óbvia.
+
+**Fix:** `classifyIntent(texto, history)` agora aceita o mesmo formato `{role, content}[]` que o brain usa, e `index.js` carrega os últimos 10 turnos via `loadHistory()` (memoryRouter, mesma função que `assistantBrain.js` já usa) antes de classificar. Prompt atualizado pra explicitamente instruir resolver alvo/verbo espalhado entre turnos, mantendo a mesma cautela de antes (só sai de "chat" se a intenção ficar clara mesmo considerando o histórico).
+
+**Validado:** três casos — "desligue" sozinho (sem histórico) continua `chat`; "a luz" com o histórico do cenário real resolve `light_off`; variação com conversa irrelevante antes do "desligue" também resolve certo (não se confunde com contexto solto).
