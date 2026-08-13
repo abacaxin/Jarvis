@@ -6,7 +6,11 @@
 
 Confirmado em 2026-08-12: SO já instalado é 64 bits (`aarch64`) — não precisou reinstalar. Câmera definida: webcam USB comum. Python do sistema é **3.13.5** — codename do SO (Bookworm/Trixie/etc.) ainda não confirmado via `/etc/os-release`, mas 3.13 sugere algo mais novo que Bookworm (que vem com 3.11).
 
-> **Bloqueio aberto na Fase 4** (venv Python): `pip install -r vision/requirements.txt` não encontra versão de `mediapipe` compatível com Python 3.13. Ver [progresso.md](progresso.md) → "Em andamento" para o diagnóstico até aqui e o próximo passo definido.
+> **Fase 4 (venv Python) teve dois bloqueios de dependência, ambos com fix já commitado mas AINDA NÃO confirmado rodando de ponta a ponta no Pi:**
+> 1. `mediapipe` não tinha wheel pra Python 3.13 no cap de versão antigo (`<0.11`) — corrigido soltando o cap (`>=1.0.0`).
+> 2. `openwakeword` exige `tflite-runtime` no Linux, que também não tem wheel pra Python 3.13 (projeto parado no PyPI) — só que esse a gente nem usa de verdade (sempre roda em modo ONNX). Corrigido instalando `openwakeword` com `--no-deps` (ver comando abaixo e comentário em `voice/requirements.txt`).
+>
+> Ver [progresso.md](progresso.md) → "Em andamento" pro diagnóstico completo de cada um.
 
 ### Fase 1 — Pacotes de sistema
 
@@ -47,7 +51,15 @@ python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r vision/requirements.txt
+
+# openwakeword com --no-deps: ele declara tflite-runtime como dependencia
+# obrigatoria no Linux, mas esse pacote nao tem wheel pra Python 3.13 (e
+# nosso codigo nunca usa esse caminho mesmo — ver comentario em
+# voice/requirements.txt). Sem --no-deps, esse passo falha com "Could not
+# find a version that satisfies the requirement tflite-runtime".
+pip install --no-deps "openwakeword>=0.6,<1"
 pip install -r voice/requirements.txt
+
 python vision/detection/download_model.py   # baixa o modelo de deteccao de mao, uma vez
 deactivate
 ```
