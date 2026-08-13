@@ -25,13 +25,30 @@ const char* HUB_HOST = "192.168.0.X"; // IP do Raspberry Pi
 const uint16_t HUB_PORT = 8765;
 
 const char* DEVICE_ID = "quarto_luz";
-const int RELAY_PIN = 26; // ajustar conforme a fiacao
+const int RELAY_PIN = 23; // ajustar conforme a fiacao
+
+// A MAIORIA dos modulos de rele de 1 canal baratos (com optoacoplador)
+// aciona em LOW, nao em HIGH -- se o comando "funciona" (ESP32 responde
+// ok) mas o rele nao muda de estado (ou faz o oposto do esperado), troca
+// isso pra true e regrava.
+const bool RELAY_ACTIVE_LOW = false;
 
 WebSocketsClient webSocket;
 
 void setRelay(bool ligar) {
 
-  digitalWrite(RELAY_PIN, ligar ? HIGH : LOW);
+  int nivel = RELAY_ACTIVE_LOW
+    ? (ligar ? LOW : HIGH)
+    : (ligar ? HIGH : LOW);
+
+  digitalWrite(RELAY_PIN, nivel);
+
+  Serial.printf(
+    "[rele] setRelay(%s) -> pino %d = %s\n",
+    ligar ? "ligar" : "desligar",
+    RELAY_PIN,
+    nivel == HIGH ? "HIGH" : "LOW"
+  );
 }
 
 void sendResult(const char* requestId, bool ok, const char* errorMsg = nullptr) {
@@ -54,6 +71,8 @@ void handleCommand(JsonDocument& doc) {
 
   const char* action = doc["action"];
   const char* requestId = doc["request_id"];
+
+  Serial.printf("[comando] recebido: action=%s request_id=%s\n", action, requestId);
 
   if (strcmp(action, "on") == 0) {
 
