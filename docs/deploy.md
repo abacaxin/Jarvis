@@ -199,9 +199,11 @@ pm2 start ecosystem.config.js
 
 Confirma com `ls -la ~/kevin/venv/bin/python3` que o arquivo existe antes do passo 4, se quiser ter certeza antes de reiniciar.
 
-### Fase 10 — Music Assistant (Docker)
+### Fase 10 — Music Assistant no Docker do Pi (abandonado — ver Fase 11)
 
-Backend de música pro Kevin (ver [decisoes.md](decisoes.md) pra arquitetura completa — sidecar Python usando `music-assistant-client`, ainda não implementado do lado do Kevin, isso aqui é só a infra de base). Estado em 2026-08-13: em andamento, cartão SD do Pi é pequeno (14GB) e ficou sem espaço na primeira tentativa — documentado abaixo o caminho real, com o desvio pra armazenamento USB.
+**Atualização 2026-08-14: essa fase foi abandonada.** Depois do problema de espaço (abaixo) resolvido via USB, o `docker run` ainda deu camada de imagem corrompida numa tentativa e, na seguinte, o Docker Desktop/engine ficou travado (`_ping` 500 error) mesmo após reinstalar — decidido rodar o Music Assistant **no PC** em vez do Pi, pra não continuar perdendo tempo em infra que não é específica do Pi. Fica registrado abaixo só como histórico/aprendizado (o problema de containerd com root separado é uma lição válida pra qualquer container pesado que ainda venha a rodar no Pi no futuro). **O Pi continua tendo um papel na música — como player (Squeezelite), não como servidor — ver Fase 11.**
+
+Backend de música pro Kevin (ver [decisoes.md](decisoes.md) pra arquitetura completa — sidecar Python usando `music-assistant-client`, ainda não implementado do lado do Kevin, isso aqui é só a infra de base). Estado em 2026-08-13: cartão SD do Pi é pequeno (14GB) e ficou sem espaço na primeira tentativa — documentado abaixo o caminho real, com o desvio pra armazenamento USB.
 
 **10.1 — Instalar Docker**
 
@@ -328,7 +330,45 @@ docker logs -f music-assistant
 1. Abre `http://<ip-do-pi>:8095` no navegador
 2. Configura as fontes de música (Spotify, biblioteca local, etc.)
 3. **Settings → Profile** → gera o token de longa duração (10 anos) — vai pro `.env` do Kevin quando a integração for implementada
-4. Instala o **Squeezelite** no PC (decisão já tomada — ver decisoes.md) pra ele virar um player reconhecido pelo Music Assistant: [github.com/ralph-irving/squeezelite](https://github.com/ralph-irving/squeezelite) releases, roda como `squeezelite.exe -n "PC do Dan" -s <ip-do-pi>`
+
+*(Passo 4 antigo, "instalar Squeezelite no PC", estava errado — o player é o Pi. Ver Fase 11.)*
+
+### Fase 11 — Music Assistant no PC + Squeezelite no Pi (caminho atual)
+
+**Servidor (PC, Windows):**
+
+1. Instala o **Docker Desktop** ([docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)) — configura o WSL2 sozinho
+2. **Settings → Resources → Network** → ativa host networking (suportado desde Docker Desktop 4.34)
+3. Sobe o Music Assistant:
+   ```bash
+   docker run -d --name music-assistant --network=host --restart=unless-stopped -v music-assistant-data:/data ghcr.io/music-assistant/server
+   ```
+4. Acessa `http://localhost:8095`, configura as fontes de música
+5. **Se for usar Spotify**: o fluxo padrão de autenticação pode redirecionar pro IP interno da VM do Docker Desktop (`192.168.65.x`) em vez de `localhost`, e o popup não completa. Fix: **Settings → Core** → campo **Base URL** → define `http://localhost:8095`, salva, tenta autenticar de novo.
+6. **Settings → Profile** → gera o token de longa duração — vai pro `.env` do Kevin quando a integração for implementada
+7. Anota o **IP do PC na rede local** (`ipconfig` no Windows) — o Pi vai precisar dele no próximo bloco
+
+**Player (Pi, conectado na caixa de som — pré-requisito: Fase 6 já feita, Bluetooth pareado e definido como sink padrão do PulseAudio):**
+
+```bash
+sudo apt install -y squeezelite
+```
+
+Testa qual saída de áudio o Squeezelite enxerga:
+
+```bash
+squeezelite -l
+```
+
+Se o PulseAudio já está com a caixa Bluetooth como sink padrão (Fase 6), `-o default` deve rotear pra lá — senão, usa o nome exato que apareceu na lista acima. Roda apontando pro Music Assistant do PC (usa o IP anotado no passo 7 acima):
+
+```bash
+squeezelite -n "Quarto" -o default -s <ip-do-pc>
+```
+
+Se conectar certo, o player **"Quarto"** deve aparecer sozinho na lista de players do Music Assistant (`http://<ip-do-pc>:8095`) — testa tocando alguma coisa por lá antes de partir pro código do Kevin.
+
+Pra deixar persistente (sobreviver a reboot do Pi), adiciona como uma terceira app no `ecosystem.config.js` com `interpreter` apontando pro binário do squeezelite, ou configura como serviço systemd — **ainda não decidido/implementado**, ver [decisoes.md](decisoes.md) e [progresso.md](progresso.md) pro estado atual antes de continuar.
 
 ## Histórico: Railway (removido)
 
