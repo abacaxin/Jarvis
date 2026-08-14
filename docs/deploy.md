@@ -266,17 +266,43 @@ Pega o `UUID=...` que o `blkid` mostrou e adiciona no `/etc/fstab`:
 echo "UUID=<uuid-aqui>  /mnt/usbstorage  ext4  defaults  0  2" | sudo tee -a /etc/fstab
 ```
 
-Aponta o Docker pra esse mount:
+**Não basta só configurar o `data-root` do Docker.** No Debian/Raspberry Pi OS, o pacote `containerd.io` roda como serviço **separado**, com o próprio diretório padrão (`/var/lib/containerd`) — o `data-root` do `daemon.json` só move a parte do Docker, o containerd continua escrevendo no cartão SD por baixo. Sintoma visto em produção: `docker run` continuava dando `no space left on device` mesmo depois do `data-root` configurado, porque o erro apontava pra `/var/lib/containerd/...`, não pra `/var/lib/docker/...`.
+
+**Fix robusto** (move as duas pastas de verdade pro pendrive, deixa link simbólico no lugar original — funciona independente de qual serviço grava onde):
 
 ```bash
 sudo systemctl stop docker
-sudo mkdir -p /mnt/usbstorage/docker
-echo '{"data-root": "/mnt/usbstorage/docker"}' | sudo tee /etc/docker/daemon.json
+sudo systemctl stop containerd
+
+sudo mkdir -p /mnt/usbstorage/docker /mnt/usbstorage/containerd
+
+sudo rsync -aP /var/lib/docker/ /mnt/usbstorage/docker/
+sudo rsync -aP /var/lib/containerd/ /mnt/usbstorage/containerd/
+
+sudo rm -rf /var/lib/docker /var/lib/containerd
+sudo ln -s /mnt/usbstorage/docker /var/lib/docker
+sudo ln -s /mnt/usbstorage/containerd /var/lib/containerd
+
+sudo systemctl start containerd
 sudo systemctl start docker
-docker info | grep "Docker Root Dir"
 ```
 
-Confirma que a última linha mostra `/mnt/usbstorage/docker` antes de seguir.
+Se tinha configurado `/etc/docker/daemon.json` com `data-root` numa tentativa anterior, remove esse arquivo (ou volta pro padrão) — o link simbólico já resolve tudo, não precisa dos dois mecanismos ao mesmo tempo:
+
+```bash
+sudo rm -f /etc/docker/daemon.json
+sudo systemctl restart docker
+```
+
+Confirma que pegou:
+
+```bash
+docker info | grep "Docker Root Dir"
+ls -la /var/lib/docker /var/lib/containerd
+df -h /mnt/usbstorage
+```
+
+`Docker Root Dir` mostra `/var/lib/docker` mesmo (é o link), mas o `ls -la` tem que mostrar que ambos são links apontando pro `/mnt/usbstorage/...`.
 
 **10.4 — Subir o Music Assistant**
 
